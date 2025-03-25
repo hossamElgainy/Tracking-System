@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Tracking System Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .control-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+        .driver-marker {
+            background-color: #0d6efd;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Driver Tracking System Test</h1>
+        
+        <div class="control-panel">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="driverId" class="form-label">Driver ID</label>
+                        <input type="text" class="form-control" id="driverId" value="R4">
+                    </div>
+                    <button id="connectBtn" class="btn btn-primary">Connect</button>
+                    <button id="disconnectBtn" class="btn btn-danger ms-2" disabled>Disconnect</button>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="messageDriverId" class="form-label">Target Driver ID</label>
+                        <input type="text" class="form-control" id="messageDriverId" placeholder="Enter driver ID">
+                    </div>
+                    <button id="sendMessageBtn" class="btn btn-success" disabled>Send Message</button>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="broadcastMessage" class="form-label">Broadcast Message</label>
+                        <input type="text" class="form-control" id="broadcastMessage" placeholder="Message for all drivers">
+                    </div>
+                    <button id="broadcastBtn" class="btn btn-warning" disabled>Broadcast</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div id="map"></div>
+            </div>
+            <div class="col-md-4">
+                <div class="status">
+                    <h4>Connection Status</h4>
+                    <div id="connectionStatus" class="mb-3">Not connected</div>
+                    <h4>Online Drivers</h4>
+                    <ul id="onlineDrivers" class="list-group"></ul>
+                    <h4 class="mt-3">Log Messages</h4>
+                    <div id="logMessages" style="height: 200px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
+
+    <script>
+        // Global variables
+        let connection;
+        let map;
+        const driverMarkers = {};
+        let currentDriverId = "";
+
+        // Initialize the map
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 20, lng: 0 },
+                zoom: 2
+            });
+            
+            logMessage("Map initialized");
+        }
+
+        // Initialize SignalR connection
+        function setupConnection(driverId) {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(`/driverHub?driverId=${driverId}`)
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            // Connection events
+            connection.onclose(async () => {
+                updateConnectionStatus("Disconnected");
+                logMessage("Connection lost. Attempting to reconnect...");
+                await startConnection();
+            });
+
+            // Hub methods
+            connection.on("ReceiveLocationUpdate", (driverId, lat, lng) => {
+                updateDriverPosition(driverId, lat, lng);
+                logMessage(`Location update for ${driverId}: ${lat}, ${lng}`);
+            });
+
+            connection.on("ReceiveDriverMessage", (message) => {
+                logMessage(`Message received: ${message}`);
+                alert(`Message for ${currentDriverId}: ${message}`);
+            });
+
+            connection.on("DriverOnline", (driverId) => {
+                logMessage(`Driver ${driverId} came online`);
+                addOnlineDriver(driverId);
+            });
+
+            connection.on("DriverOffline", (driverId) => {
+                logMessage(`Driver ${driverId} went offline`);
+                removeOnlineDriver(driverId);
+            });
+
+            connection.on("ReceiveBroadcast", (message) => {
+                logMessage(`Broadcast message: ${message}`);
+                alert(`Broadcast: ${message}`);
+            });
+
+            startConnection();
+        }
+
+        async function startConnection() {
+            try {
+                await connection.start();
+                updateConnectionStatus("Connected");
+                logMessage("SignalR connection established");
+                
+                // Enable buttons
+                document.getElementById("disconnectBtn").disabled = false;
+                document.getElementById("sendMessageBtn").disabled = false;
+                document.getElementById("broadcastBtn").disabled = false;
+                
+                // Get initial list of online drivers
+                const onlineDrivers = await connection.invoke("GetOnlineDrivers");
+                onlineDrivers.forEach(driverId => addOnlineDriver(driverId));
+                
+                // Start sending periodic location updates (simulation)
+                if (currentDriverId) {
+                    startLocationUpdates();
+                }
+            } catch (err) {
+                logMessage(`Connection error: ${err}`);
+                setTimeout(startConnection, 5000);
+            }
+        }
+
+        function startLocationUpdates() {
+            // Simulate location updates for testing
+            setInterval(() => {
+                if (connection && connection.state === signalR.HubConnectionState.Connected) {
+                    // Generate random location near current position
+                    const lat = (Math.random() * 10) - 5 + (map.getCenter().lat() || 0);
+                    const lng = (Math.random() * 10) - 5 + (map.getCenter().lng() || 0);
+                    
+                    connection.invoke("SendLocationUpdate", currentDriverId, lat, lng)
+                        .catch(err => logMessage(`Error sending location: ${err}`));
+                }
+            }, 5000);
+        }
+
+        function updateDriverPosition(driverId, lat, lng) {
+            const position = { lat, lng };
+            
+            if (driverMarkers[driverId]) {
+                // Update existing marker
+                driverMarkers[driverId].setPosition(position);
+            } else {
+                // Create new marker
+                driverMarkers[driverId] = new google.maps.Marker({
+                    position,
+                    map,
+                    title: driverId,
+                    label: {
+                        text: driverId.replace('R', ''),
+                        color: 'white'
+                    },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: '#0d6efd',
+                        fillOpacity: 1,
+                        strokeWeight: 1,
+                        strokeColor: 'white'
+                    }
+                });
+                
+                // Center map on new driver if it's the current driver
+                if (driverId === currentDriverId) {
+                    map.panTo(position);
+                }
+            }
+        }
+
+        function addOnlineDriver(driverId) {
+            const list = document.getElementById("onlineDrivers");
+            if (!Array.from(list.children).some(li => li.textContent === driverId)) {
+                const li = document.createElement("li");
+                li.className = "list-group-item";
+                li.textContent = driverId;
+                list.appendChild(li);
+            }
+        }
+
+        function removeOnlineDriver(driverId) {
+            const list = document.getElementById("onlineDrivers");
+            Array.from(list.children).forEach(li => {
+                if (li.textContent === driverId) {
+                    list.removeChild(li);
+                }
+            });
+        }
+
+        function updateConnectionStatus(status) {
+            const statusDiv = document.getElementById("connectionStatus");
+            statusDiv.textContent = status;
+            statusDiv.style.color = status === "Connected" ? "green" : "red";
+        }
+
+        function logMessage(message) {
+            const logDiv = document.getElementById("logMessages");
+            const entry = document.createElement("div");
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Event listeners
+        document.getElementById("connectBtn").addEventListener("click", () => {
+            currentDriverId = document.getElementById("driverId").value.trim();
+            if (currentDriverId) {
+                setupConnection(currentDriverId);
+                document.getElementById("connectBtn").disabled = true;
+                logMessage(`Connecting as driver ${currentDriverId}...`);
+            }
+        });
+
+        document.getElementById("disconnectBtn").addEventListener("click", async () => {
+            if (connection) {
+                await connection.stop();
+                currentDriverId = "";
+                document.getElementById("connectBtn").disabled = false;
+                document.getElementById("disconnectBtn").disabled = true;
+                document.getElementById("sendMessageBtn").disabled = true;
+                document.getElementById("broadcastBtn").disabled = true;
+                logMessage("Disconnected from hub");
+            }
+        });
+
+        document.getElementById("sendMessageBtn").addEventListener("click", async () => {
+            const targetDriverId = document.getElementById("messageDriverId").value.trim();
+            const message = prompt("Enter message to send:");
+            
+            if (targetDriverId && message) {
+                try {
+                    await connection.invoke("SendMessageToDriver", targetDriverId, message);
+                    logMessage(`Message sent to ${targetDriverId}`);
+                } catch (err) {
+                    logMessage(`Error sending message: ${err}`);
+                }
+            }
+        });
+
+        document.getElementById("broadcastBtn").addEventListener("click", async () => {
+            const message = document.getElementById("broadcastMessage").value.trim();
+            
+            if (message) {
+                try {
+                    await connection.invoke("SendMessageToAllDrivers", message);
+                    logMessage(`Broadcast message sent`);
+                } catch (err) {
+                    logMessage(`Error broadcasting message: ${err}`);
+                }
+            }
+        });
+
+        // Initialize with a random driver ID if you want
+        // document.getElementById("driverId").value = "R" + Math.floor(Math.random() * 500 + 4);
+    </script>
+</body>
+</html>
