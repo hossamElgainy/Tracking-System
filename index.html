@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <title>Tracking System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Assignment & Tracking System</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -10,85 +11,150 @@
             height: 600px;
             width: 100%;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-
-        .driver-info-window {
+        .driver-info-window, .order-info-window {
             font-family: Arial, sans-serif;
             padding: 8px;
         }
-
         .driver-info-title {
             font-weight: bold;
             margin-bottom: 5px;
             color: #0d6efd;
         }
-
+        .order-info-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #6f42c1;
+        }
+        .assigned-driver {
+            color: #dc3545;
+            font-weight: bold;
+        }
         .online-badge {
             background-color: #198754;
         }
-
         .offline-badge {
             background-color: #dc3545;
         }
+        .assignment-line {
+            stroke: #dc3545;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+        }
+        .control-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+        .driver-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
-
 <body>
     <div class="container mt-4">
-        <h1 class="text-center mb-4">Driver Tracking System</h1>
-
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="driverIds" class="form-label">Driver IDs (comma separated)</label>
-                            <input type="text" class="form-control" id="driverIds" placeholder="R4,R5,R6,R7"
-                                value="R4,R5,R6,R7">
-                        </div>
-                        <button id="connectBtn" class="btn btn-primary">Connect All</button>
-                        <button id="disconnectBtn" class="btn btn-danger ms-2" disabled>Disconnect All</button>
+        <h1 class="text-center mb-4">Driver Assignment & Tracking System</h1>
+        
+        <div class="control-panel">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="driverId" class="form-label">Your Driver ID</label>
+                        <input type="text" class="form-control" id="driverId" value="R4">
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="broadcastMessage" class="form-label">Broadcast Message</label>
-                            <input type="text" class="form-control" id="broadcastMessage"
-                                placeholder="Message for all drivers">
-                        </div>
-                        <button id="broadcastBtn" class="btn btn-warning" disabled>Broadcast</button>
+                    <button id="connectBtn" class="btn btn-primary">Connect</button>
+                    <button id="disconnectBtn" class="btn btn-danger ms-2" disabled>Disconnect</button>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="driverList" class="form-label">Driver List (comma separated)</label>
+                        <input type="text" class="form-control" id="driverList" placeholder="R1,R2,R3,R4,R5" value="R4,R5,R6,R7">
                     </div>
+                    <button id="loadDriversBtn" class="btn btn-secondary">Load Drivers</button>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="broadcastMessage" class="form-label">Broadcast Message</label>
+                        <input type="text" class="form-control" id="broadcastMessage" placeholder="Message for all drivers">
+                    </div>
+                    <button id="broadcastBtn" class="btn btn-warning" disabled>Broadcast</button>
                 </div>
             </div>
         </div>
 
         <div class="row">
             <div class="col-md-8">
-                <div class="card">
+                <div class="card mb-3">
                     <div class="card-body p-0">
                         <div id="map"></div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
+                
+                <div class="card mb-3">
                     <div class="card-body">
-                        <h4 class="card-title">Connection Status</h4>
-                        <div id="connectionStatus" class="mb-3 alert alert-secondary">Not connected</div>
-                        <h4 class="card-title">Online Drivers</h4>
-                        <ul id="onlineDrivers" class="list-group mb-3"></ul>
-                        <h4 class="card-title mt-3">Log Messages</h4>
-                        <div id="logMessages" class="card bg-light"
-                            style="height: 200px; overflow-y: auto; padding: 10px;"></div>
+                        <h4 class="card-title">Order Management</h4>
+                        <div class="mb-3">
+                            <label for="orderIdInput" class="form-label">Order ID</label>
+                            <input type="text" class="form-control" id="orderIdInput" placeholder="ORDER123">
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="orderLatInput" class="form-label">Latitude</label>
+                                <input type="number" step="0.000001" class="form-control" id="orderLatInput" placeholder="24.7136">
+                            </div>
+                            <div class="col">
+                                <label for="orderLngInput" class="form-label">Longitude</label>
+                                <input type="number" step="0.000001" class="form-control" id="orderLngInput" placeholder="46.6753">
+                            </div>
+                        </div>
+                        <button id="showOrderBtn" class="btn btn-primary">Show Order on Map</button>
                     </div>
+                </div>
+
+                <div id="assignmentDetails" class="card mb-3" style="display:none;">
+                    <div class="card-body">
+                        <h5 class="card-title">Assignment Details</h5>
+                        <div id="assignmentInfo"></div>
+                        <button id="confirmAssignmentBtn" class="btn btn-success mt-2">Confirm Assignment</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="status">
+                    <h4>Connection Status</h4>
+                    <div id="connectionStatus" class="mb-3 alert alert-secondary">Not connected</div>
+                    
+                    <h4>Driver Management</h4>
+                    <div class="driver-list card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Available Drivers</h5>
+                            <ul id="availableDrivers" class="list-group mb-3"></ul>
+                        </div>
+                    </div>
+                    
+                    <h4>Online Drivers</h4>
+                    <ul id="onlineDrivers" class="list-group mb-3"></ul>
+                    
+                    <h4 class="mt-3">Log Messages</h4>
+                    <div id="logMessages" class="card bg-light" style="height: 200px; overflow-y: auto; padding: 10px;"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Load Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDw2L54vytvX214rcrejbI9T-tqZDI58xE&callback=initMap"
-        async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDw2L54vytvX214rcrejbI9T-tqZDI58xE&callback=initMap" async defer></script>
 
     <script>
         // Global variables
@@ -97,17 +163,24 @@
         const driverMarkers = {};
         const driverConnections = new Map();
         const infoWindows = {};
+        const orderMarkers = {};
+        const assignmentLines = {};
+        let currentOrder = null;
+        let currentAssignment = null;
+        let currentDriverId = "";
+        let availableDrivers = new Set(["R4", "R5", "R6", "R7"]);
+        
         const colors = [
-            '#0d6efd', '#198754', '#dc3545', '#ffc107',
+            '#0d6efd', '#198754', '#dc3545', '#ffc107', 
             '#0dcaf0', '#6610f2', '#fd7e14', '#20c997',
             '#6f42c1', '#d63384', '#fd7e14', '#20c997'
         ];
         const driverNameCache = new Map();
 
-        // Initialize the map with better defaults
+        // Initialize the map
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 24.7136, lng: 46.6753 }, // Centered on Riyadh
+                center: { lat: 24.7136, lng: 46.6753 },
                 zoom: 12,
                 mapTypeControl: true,
                 streetViewControl: false,
@@ -120,25 +193,21 @@
                     }
                 ]
             });
-
-            // Add bounds to prevent zooming out too far
+            
             map.setOptions({
                 minZoom: 3,
                 maxZoom: 18
             });
-
+            
             logMessage("Map initialized - Ready to track drivers");
+            updateAvailableDriversList();
         }
 
         // Initialize SignalR connection
-        async function setupConnection() {
+        function setupConnection(driverId) {
             connection = new signalR.HubConnectionBuilder()
-                .withUrl(`https://laundry.runasp.net/driverHub`)
-                .withAutomaticReconnect({
-                    nextRetryDelayInMilliseconds: retryContext => {
-                        return Math.min(retryContext.previousRetryCount * 1000, 10000);
-                    }
-                })
+                .withUrl(`https://laundry.runasp.net/driverHub?driverId=${driverId}`)
+                .withAutomaticReconnect()
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
@@ -156,23 +225,12 @@
             connection.onreconnected(connectionId => {
                 updateConnectionStatus("Connected", "alert-success");
                 logMessage(`Reconnected with ID: ${connectionId}`);
-
-                // Re-establish all driver connections
-                const driverIds = document.getElementById("driverIds").value.split(',').map(id => id.trim());
-                driverIds.forEach(driverId => {
-                    if (driverId && !driverConnections.has(driverId)) {
-                        driverConnections.set(driverId, true);
-                        addOnlineDriver(driverId);
-                    }
-                });
             });
 
             // Hub methods
             connection.on("ReceiveLocationUpdate", (driverId, lat, lng, timestamp) => {
                 updateDriverPosition(driverId, lat, lng, timestamp);
-                (async () => {
-                    logMessage(`Location update for ${await getName(driverId)} at ${new Date().toLocaleTimeString()} - Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`);
-                })();
+                logMessage(`Location update for ${driverId} at ${new Date(timestamp).toLocaleTimeString()}`);
             });
 
             connection.on("DriverOnline", (driverId) => {
@@ -205,104 +263,381 @@
                 await connection.start();
                 updateConnectionStatus("Connected", "alert-success");
                 logMessage("SignalR connection established");
-
+                
                 // Enable buttons
                 document.getElementById("disconnectBtn").disabled = false;
                 document.getElementById("broadcastBtn").disabled = false;
-
-                // Get initial list of drivers
-                const driverIds = document.getElementById("driverIds").value.split(',').map(id => id.trim());
-                driverIds.forEach(driverId => {
-                    if (driverId) {
+                
+                // Connect all available drivers
+                availableDrivers.forEach(driverId => {
+                    if (driverId !== currentDriverId) {
                         driverConnections.set(driverId, true);
                         addOnlineDriver(driverId);
                         simulateDriverMovement(driverId);
                     }
                 });
-
+                
+                // Start sending location updates for current driver
+                if (currentDriverId) {
+                    startLocationUpdates();
+                }
+                
             } catch (err) {
                 logMessage(`Connection error: ${err}`);
                 setTimeout(startConnection, 5000);
             }
         }
 
-        async function getName(driverId) {
-            // Check cache first
-            if (driverNameCache.has(driverId)) {
-                return driverNameCache.get(driverId);
-            }
-
-            // Fetch from API
-            try {
-                const response = await fetch(`https://laundry.runasp.net/api/drivers/GetDriverById?Id=${driverId}`);
-                const data = await response.json();
-
-                // Handle the API response structure
-                const fullName = data.data?.fullName || driverId; // Fallback to ID if no name found
-                driverNameCache.set(driverId, fullName);
-                return fullName;
-            } catch (error) {
-                console.error('Failed to fetch driver name:', error);
-                return driverId; // Fallback to ID if API fails
+        function startLocationUpdates() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    position => {
+                        connection.invoke("SendLocationUpdate", 
+                            currentDriverId,
+                            position.coords.latitude,
+                            position.coords.longitude)
+                        .catch(err => console.error("Send failed:", err));
+                    },
+                    error => {
+                        console.error("Geolocation error:", error);
+                        // Fallback to simulated position if geolocation fails
+                        simulateDriverMovement(currentDriverId);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                // Browser doesn't support geolocation, use simulation
+                simulateDriverMovement(currentDriverId);
             }
         }
 
-        // Enhanced driver movement simulation
+        // Driver simulation
         function simulateDriverMovement(driverId) {
             if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
-
-            // Initial position with some variation
+            
             let lat = 24.7136 + (Math.random() * 0.1 - 0.05);
             let lng = 46.6753 + (Math.random() * 0.1 - 0.05);
             let heading = Math.random() * 360;
-
-            // Update position every 3-5 seconds
+            
             const interval = setInterval(() => {
                 if (!driverConnections.has(driverId)) {
                     clearInterval(interval);
                     return;
                 }
-
-                // Calculate new position based on heading
+                
                 const distance = 0.001 + Math.random() * 0.002;
                 lat += distance * Math.cos(heading * Math.PI / 180);
                 lng += distance * Math.sin(heading * Math.PI / 180);
-
-                // Random slight heading changes
                 heading += (Math.random() * 30 - 15);
-
-                // Send update with timestamp
-                const timestamp = new Date().toISOString();
+                
                 connection.invoke("SendLocationUpdate", driverId, lat, lng)
                     .catch(err => console.error("Send failed:", err));
-
+                    
             }, 3000 + Math.random() * 2000);
         }
 
-        // Enhanced driver position update with info window
+        // Update available drivers list
+        function updateAvailableDriversList() {
+            const list = document.getElementById("availableDrivers");
+            list.innerHTML = '';
+            
+            availableDrivers.forEach(driverId => {
+                const li = document.createElement("li");
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
+                li.dataset.driverId = driverId;
+                li.innerHTML = `
+                    ${driverId}
+                    <div>
+                        <button class="btn btn-sm btn-outline-danger" 
+                                onclick="removeDriverFromList('${driverId}')">Remove</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        // Remove driver from available list
+        window.removeDriverFromList = function(driverId) {
+            availableDrivers.delete(driverId);
+            updateAvailableDriversList();
+            logMessage(`Removed driver ${driverId} from available list`);
+            
+            // If this driver was online, disconnect them
+            if (driverConnections.has(driverId)) {
+                driverConnections.delete(driverId);
+                removeOnlineDriver(driverId);
+                removeDriverMarker(driverId);
+            }
+        };
+
+        // Load drivers from input
+        document.getElementById("loadDriversBtn").addEventListener("click", function() {
+            const driverListInput = document.getElementById("driverList").value;
+            const drivers = driverListInput.split(',').map(d => d.trim()).filter(d => d);
+            
+            availableDrivers = new Set(drivers);
+            updateAvailableDriversList();
+            logMessage(`Loaded ${drivers.length} drivers from list`);
+            
+            // Connect all new drivers
+            drivers.forEach(driverId => {
+                if (!driverConnections.has(driverId) && driverId !== currentDriverId) {
+                    driverConnections.set(driverId, true);
+                    addOnlineDriver(driverId);
+                    simulateDriverMovement(driverId);
+                }
+            });
+        });
+
+        // Distance calculation
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distance in km
+        }
+
+        // Order management functions
+        function showOrderOnMap(order) {
+            // Remove any existing order marker
+            if (orderMarkers[order.id]) {
+                orderMarkers[order.id].setMap(null);
+            }
+            
+            // Create new order marker
+            orderMarkers[order.id] = new google.maps.Marker({
+                position: { lat: order.lat, lng: order.lng },
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: '#FF00FF',
+                    fillOpacity: 1,
+                    strokeWeight: 2,
+                    strokeColor: '#FFFFFF'
+                },
+                title: `Order ${order.id}`
+            });
+            
+            // Create info window
+            const infoWindow = new google.maps.InfoWindow({
+                content: createOrderInfoContent(order)
+            });
+            
+            orderMarkers[order.id].addListener('click', () => {
+                infoWindow.open(map, orderMarkers[order.id]);
+            });
+            
+            // Center map on order
+            map.panTo({ lat: order.lat, lng: order.lng });
+            map.setZoom(14);
+            
+            // Set as current order
+            currentOrder = order;
+            
+            // Highlight nearby drivers
+            highlightNearbyDrivers(order.lat, order.lng);
+            
+            logMessage(`Showing order ${order.id} on map. Click a driver to assign.`);
+        }
+
+        function highlightNearbyDrivers(orderLat, orderLng) {
+            resetAllDriverMarkers();
+            
+            driverConnections.forEach((_, driverId) => {
+                const marker = driverMarkers[driverId];
+                if (marker) {
+                    const driverPos = marker.getPosition();
+                    const distance = calculateDistance(orderLat, orderLng, driverPos.lat(), driverPos.lng());
+                    
+                    if (distance < 5) { // Within 5km
+                        marker.setIcon({
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 10,
+                            fillColor: '#FFA500',
+                            fillOpacity: 1,
+                            strokeWeight: 2,
+                            strokeColor: '#FFFFFF'
+                        });
+                        
+                        marker.addListener('click', () => {
+                            assignDriverToOrder(currentOrder.id, driverId);
+                        });
+                    }
+                }
+            });
+        }
+
+        function resetAllDriverMarkers() {
+            driverConnections.forEach((_, driverId) => {
+                if (driverMarkers[driverId]) {
+                    const colorIndex = parseInt(driverId.replace('R', '')) % colors.length;
+                    const color = colors[colorIndex];
+                    
+                    driverMarkers[driverId].setIcon({
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: color,
+                        fillOpacity: 0.9,
+                        strokeWeight: 2,
+                        strokeColor: 'white'
+                    });
+                    
+                    google.maps.event.clearListeners(driverMarkers[driverId], 'click');
+                }
+            });
+        }
+
+        async function assignDriverToOrder(orderId, driverId) {
+            if (!currentOrder || currentOrder.id !== orderId) {
+                logMessage("No active order selected for assignment");
+                return;
+            }
+            
+            const driverName = await getName(driverId);
+            const driverPos = driverMarkers[driverId].getPosition();
+            const distance = calculateDistance(
+                currentOrder.lat,
+                currentOrder.lng,
+                driverPos.lat(),
+                driverPos.lng()
+            );
+            
+            // Update driver marker
+            driverMarkers[driverId].setIcon({
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 12,
+                fillColor: '#FF0000',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#FFFFFF'
+            });
+            
+            // Draw assignment line
+            drawAssignmentLine(orderId, driverId, driverPos);
+            
+            // Update info window
+            if (infoWindows[driverId]) {
+                infoWindows[driverId].setContent(
+                    createAssignedDriverInfoContent(driverName, driverId, orderId, distance)
+                );
+            }
+            
+            // Store assignment
+            currentAssignment = {
+                orderId: orderId,
+                driverId: driverId,
+                driverName: driverName,
+                distance: distance,
+                position: driverPos
+            };
+            
+            // Show assignment details
+            showAssignmentDetails(currentAssignment);
+            
+            logMessage(`Preparing to assign driver ${driverId} (${driverName}) to order ${orderId}`);
+        }
+
+        function drawAssignmentLine(orderId, driverId, driverPos) {
+            if (assignmentLines[orderId]) {
+                assignmentLines[orderId].setMap(null);
+            }
+            
+            assignmentLines[orderId] = new google.maps.Polyline({
+                path: [
+                    { lat: currentOrder.lat, lng: currentOrder.lng },
+                    { lat: driverPos.lat(), lng: driverPos.lng() }
+                ],
+                geodesic: true,
+                strokeColor: '#FF0000',
+                strokeOpacity: 1.0,
+                strokeWeight: 2,
+                strokeDashArray: [5, 5],
+                map: map
+            });
+        }
+
+        function showAssignmentDetails(assignment) {
+            document.getElementById('assignmentInfo').innerHTML = `
+                <p><strong>Order ID:</strong> ${assignment.orderId}</p>
+                <p><strong>Driver:</strong> ${assignment.driverName} (${assignment.driverId})</p>
+                <p><strong>Distance:</strong> ${assignment.distance.toFixed(2)} km</p>
+            `;
+            document.getElementById('assignmentDetails').style.display = 'block';
+            
+            // Center map on driver
+            map.panTo(assignment.position);
+        }
+
+        // Content creation functions
+        function createOrderInfoContent(order) {
+            return `
+                <div class="order-info-window">
+                    <div class="order-info-title">Order ${order.id}</div>
+                    <div><strong>Location:</strong></div>
+                    <div>Lat: ${order.lat.toFixed(6)}</div>
+                    <div>Lng: ${order.lng.toFixed(6)}</div>
+                    <div><strong>Status:</strong> <span class="badge bg-secondary">Pending Assignment</span></div>
+                </div>
+            `;
+        }
+
+        function createAssignedDriverInfoContent(driverName, driverId, orderId, distance) {
+            return `
+                <div class="driver-info-window">
+                    <div class="driver-info-title assigned-driver">${driverName} (ASSIGNED)</div>
+                    <div><small>ID: ${driverId}</small></div>
+                    <div><strong>Assigned to order:</strong> ${orderId}</div>
+                    <div><strong>Distance to client:</strong> ${distance.toFixed(2)} km</div>
+                    <div><strong>Assigned at:</strong> ${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+        }
+
+        // Driver information functions
+        async function getName(driverId) {
+            if (driverNameCache.has(driverId)) {
+                return driverNameCache.get(driverId);
+            }
+            
+            try {
+                const response = await fetch(`https://laundry.runasp.net/api/drivers/GetDriverById?Id=${driverId}`);
+                const data = await response.json();
+                const fullName = data.data?.fullName || driverId;
+                driverNameCache.set(driverId, fullName);
+                return fullName;
+            } catch (error) {
+                console.error('Failed to fetch driver name:', error);
+                return driverId;
+            }
+        }
+
         async function updateDriverPosition(driverId, lat, lng, timestamp) {
             const driverName = await getName(driverId);
-
             const position = { lat, lng };
             const colorIndex = parseInt(driverId.replace('R', '')) % colors.length;
             const color = colors[colorIndex];
-
+            
             if (driverMarkers[driverId]) {
-                // Update existing marker
                 driverMarkers[driverId].setPosition(position);
                 driverMarkers[driverId].setTitle(driverName);
-                // Update info window content
                 if (infoWindows[driverId]) {
-                    infoWindows[driverId].setContent(createInfoWindowContent(driverName, driverId, lat, lng, timestamp));
+                    infoWindows[driverId].setContent(
+                        createDriverInfoContent(driverName, driverId, lat, lng, timestamp)
+                    );
                 }
             } else {
-                // Create new marker
                 driverMarkers[driverId] = new google.maps.Marker({
                     position,
                     map,
                     title: driverName,
                     label: {
-                        text: driverName,
+                        text: driverName.split(' ').map(n => n[0]).join(''),
                         color: 'white',
                         fontSize: '12px',
                         fontWeight: 'bold'
@@ -317,61 +652,34 @@
                     },
                     animation: google.maps.Animation.DROP
                 });
-
-                // Create info window
+                
                 infoWindows[driverId] = new google.maps.InfoWindow({
-                    content: createInfoWindowContent(driverName, driverId, lat, lng, timestamp)
+                    content: createDriverInfoContent(driverName, driverId, lat, lng, timestamp)
                 });
-
-                // Add click listener to show info window
+                
                 driverMarkers[driverId].addListener("click", () => {
-                    // Close all other info windows
                     Object.values(infoWindows).forEach(iw => iw.close());
                     infoWindows[driverId].open(map, driverMarkers[driverId]);
                 });
             }
         }
 
-        function createInfoWindowContent(driverName, driverId, lat, lng, timestamp) {
+        function createDriverInfoContent(driverName, driverId, lat, lng, timestamp) {
             const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString() : 'Just now';
             return `
-        <div class="driver-info-window">
-            <div class="driver-info-title">${driverName}</div>
-            <div><strong>Status:</strong> <span class="badge online-badge">Online</span></div>
-            <div><strong>Last Update:</strong> ${timeStr}</div>
-            <div><strong>Location:</strong></div>
-            <div>Lat: ${lat.toFixed(6)}</div>
-            <div>Lng: ${lng.toFixed(6)}</div>
-            <div class="mt-2">
-                <button onclick="centerOnDriver('${driverId}')" 
-                        class="btn btn-sm btn-primary">Center Map</button>
-            </div>
-        </div>
-    `;
+                <div class="driver-info-window">
+                    <div class="driver-info-title">${driverName}</div>
+                    <div><small>ID: ${driverId}</small></div>
+                    <div><strong>Status:</strong> <span class="badge online-badge">Online</span></div>
+                    <div><strong>Last Update:</strong> ${timeStr}</div>
+                    <div><strong>Location:</strong></div>
+                    <div>Lat: ${lat.toFixed(6)}</div>
+                    <div>Lng: ${lng.toFixed(6)}</div>
+                </div>
+            `;
         }
 
-        // Center map on specific driver
-        window.centerOnDriver = function (driverId) {
-            if (driverMarkers[driverId]) {
-                map.panTo(driverMarkers[driverId].getPosition());
-                map.setZoom(15);
-                if (infoWindows[driverId]) {
-                    infoWindows[driverId].open(map, driverMarkers[driverId]);
-                }
-            }
-        };
-
-        function removeDriverMarker(driverId) {
-            if (driverMarkers[driverId]) {
-                driverMarkers[driverId].setMap(null);
-                delete driverMarkers[driverId];
-            }
-            if (infoWindows[driverId]) {
-                infoWindows[driverId].close();
-                delete infoWindows[driverId];
-            }
-        }
-
+        // UI management functions
         async function addOnlineDriver(driverId) {
             const list = document.getElementById("onlineDrivers");
             if (!Array.from(list.children).some(li => li.dataset.driverId === driverId)) {
@@ -379,13 +687,13 @@
                 li.className = "list-group-item d-flex justify-content-between align-items-center";
                 li.dataset.driverId = driverId;
                 li.innerHTML = `
-            ${await getName(driverId)}
-            <div>
-                <span class="badge online-badge rounded-pill">Online</span>
-                <button class="btn btn-sm btn-outline-primary ms-2" 
-                        onclick="centerOnDriver('${driverId}')">Show</button>
-            </div>
-        `;
+                    ${await getName(driverId)}
+                    <div>
+                        <span class="badge online-badge rounded-pill">Online</span>
+                        <button class="btn btn-sm btn-outline-primary ms-2" 
+                                onclick="centerOnDriver('${driverId}')">Show</button>
+                    </div>
+                `;
                 list.appendChild(li);
             }
         }
@@ -398,6 +706,28 @@
                 }
             });
         }
+
+        function removeDriverMarker(driverId) {
+            if (driverMarkers[driverId]) {
+                driverMarkers[driverId].setMap(null);
+                delete driverMarkers[driverId];
+            }
+            if (infoWindows[driverId]) {
+                infoWindows[driverId].close();
+                delete infoWindows[driverId];
+            }
+        }
+
+        // Utility functions
+        window.centerOnDriver = function(driverId) {
+            if (driverMarkers[driverId]) {
+                map.panTo(driverMarkers[driverId].getPosition());
+                map.setZoom(15);
+                if (infoWindows[driverId]) {
+                    infoWindows[driverId].open(map, driverMarkers[driverId]);
+                }
+            }
+        };
 
         function updateConnectionStatus(status, alertClass) {
             const statusDiv = document.getElementById("connectionStatus");
@@ -420,7 +750,7 @@
             notification.style.width = "300px";
             notification.textContent = message;
             document.body.appendChild(notification);
-
+            
             setTimeout(() => {
                 notification.remove();
             }, 5000);
@@ -428,40 +758,66 @@
 
         // Event listeners
         document.getElementById("connectBtn").addEventListener("click", () => {
-            setupConnection();
-            document.getElementById("connectBtn").disabled = true;
-            logMessage("Connecting to tracking hub...");
+            currentDriverId = document.getElementById("driverId").value.trim();
+            if (currentDriverId) {
+                setupConnection(currentDriverId);
+                document.getElementById("connectBtn").disabled = true;
+                logMessage(`Connecting as driver ${currentDriverId}...`);
+            }
         });
 
         document.getElementById("disconnectBtn").addEventListener("click", async () => {
             if (connection) {
                 await connection.stop();
-                driverConnections.clear();
-                document.getElementById("onlineDrivers").innerHTML = '';
-                Object.values(driverMarkers).forEach(marker => marker.setMap(null));
-                Object.values(infoWindows).forEach(iw => iw.close());
+                currentDriverId = "";
                 document.getElementById("connectBtn").disabled = false;
                 document.getElementById("disconnectBtn").disabled = true;
                 document.getElementById("broadcastBtn").disabled = true;
-                updateConnectionStatus("Disconnected", "alert-danger");
                 logMessage("Disconnected from hub");
             }
         });
 
         document.getElementById("broadcastBtn").addEventListener("click", async () => {
             const message = document.getElementById("broadcastMessage").value.trim();
-
+            
             if (message) {
                 try {
                     await connection.invoke("SendMessageToAllDrivers", message);
-                    logMessage(`Broadcast message sent to all drivers`);
-                    document.getElementById("broadcastMessage").value = '';
+                    logMessage(`Broadcast message sent`);
                 } catch (err) {
                     logMessage(`Error broadcasting message: ${err}`);
                 }
             }
         });
+
+        document.getElementById("showOrderBtn").addEventListener("click", () => {
+            const orderId = document.getElementById("orderIdInput").value;
+            const lat = parseFloat(document.getElementById("orderLatInput").value);
+            const lng = parseFloat(document.getElementById("orderLngInput").value);
+            
+            if (!orderId || isNaN(lat) || isNaN(lng)) {
+                alert("Please enter valid order details");
+                return;
+            }
+            
+            showOrderOnMap({
+                id: orderId,
+                lat: lat,
+                lng: lng
+            });
+        });
+
+        document.getElementById("confirmAssignmentBtn").addEventListener("click", () => {
+            if (currentAssignment) {
+                logMessage(`Confirmed assignment: Driver ${currentAssignment.driverId} assigned to order ${currentAssignment.orderId}`);
+                showNotification(`Assignment confirmed!\nDriver: ${currentAssignment.driverName}\nOrder: ${currentAssignment.orderId}`);
+                
+                // Reset UI
+                document.getElementById("assignmentDetails").style.display = 'none';
+                currentOrder = null;
+                currentAssignment = null;
+            }
+        });
     </script>
 </body>
-
 </html>
