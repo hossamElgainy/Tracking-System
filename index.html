@@ -115,7 +115,7 @@
         // Initialize SignalR connection
         function setupConnection(driverId) {
             connection = new signalR.HubConnectionBuilder()
-                .withUrl(`/driverHub?driverId=${driverId}`)
+                .withUrl(`https://laundry.runasp.net/driverHub?driverId=${driverId}`)
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
@@ -181,18 +181,20 @@
         }
 
         function startLocationUpdates() {
-            // Simulate location updates for testing
-            setInterval(() => {
-                if (connection && connection.state === signalR.HubConnectionState.Connected) {
-                    // Generate random location near current position
-                    const lat = (Math.random() * 10) - 5 + (map.getCenter().lat() || 0);
-                    const lng = (Math.random() * 10) - 5 + (map.getCenter().lng() || 0);
-                    
-                    connection.invoke("SendLocationUpdate", currentDriverId, lat, lng)
-                        .catch(err => logMessage(`Error sending location: ${err}`));
-                }
-            }, 5000);
-        }
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            position => {
+                connection.invoke("SendLocationUpdate", 
+                    currentDriverId,
+                    position.coords.latitude,
+                    position.coords.longitude)
+                .catch(err => console.error("Send failed:", err));
+            },
+            error => console.error("Geolocation error:", error),
+            { enableHighAccuracy: true }
+        );
+    }
+}
 
         function updateDriverPosition(driverId, lat, lng) {
             const position = { lat, lng };
