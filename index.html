@@ -139,7 +139,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Assignment Details</h5>
                         <div id="assignmentInfo"></div>
-                        <button id="confirmAssignmentBtn" class="btn btn-success mt-2">Confirm Assignment</button>
+                        <button id="confirmAssignmentBtn" class="btn btn-success mt-2" >Confirm Assignment</button>
                     </div>
                 </div>
             </div>
@@ -199,7 +199,7 @@
         // Initialize the map
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 24.7136, lng: 46.6753 },
+                center: { lat: 29.9514, lng: 30.9247 },
                 zoom: 12,
                 mapTypeControl: true,
                 streetViewControl: false,
@@ -421,8 +421,8 @@
         function simulateDriverMovement(driverId) {
             if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
             
-            let lat = 24.7136 + (Math.random() * 0.1 - 0.05);
-            let lng = 46.6753 + (Math.random() * 0.1 - 0.05);
+            let lat = 29.9514 + (Math.random() * 0.1 - 0.05);
+            let lng = 30.9247 + (Math.random() * 0.1 - 0.05);
             let heading = Math.random() * 360;
             
             const interval = setInterval(() => {
@@ -450,14 +450,14 @@
                 document.getElementById("fetchOrderSpinner").style.display = "inline-block";
                 
                 // Fetch order from API
-                const response = await fetch(`https://laundry.runasp.net/api/orders/${orderId}`);
+                const response = await fetch(`https://laundry.runasp.net/api/orders/GetOrderById?OrderId=${orderId}`);
                 const data = await response.json();
-                
+                console.log(data);
                 if (response.ok) {
                     return {
                         id: orderId,
-                        lat: data.latitude,
-                        lng: data.longitude,
+                        lat: data.lat,
+                        lng: data.lang,
                         address: data.address || "Address not specified"
                     };
                 } else {
@@ -657,6 +657,113 @@
             
             // Center map on driver
             map.panTo(assignment.position);
+        }
+
+        // NEW: Function to actually assign the order via API
+        async function confirmOrderAssignment(assignment) {
+    try {
+        // Show loading state
+        document.getElementById("confirmAssignmentBtn").disabled = true;
+        document.getElementById("confirmAssignmentBtn").innerHTML = `
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Assigning...
+        `;
+        
+        // Prepare the request
+        const requestBody = {
+            orderId: parseInt(assignment.orderId),
+            deliveryId: assignment.driverId
+        };
+        
+        // Make the API call
+        const response = await fetch('https://laundry.runasp.net/api/OrderDeliveries', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // Add authorization header if needed
+                // 'Authorization': 'Bearer ' + yourAuthToken
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API returned ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update UI for successful assignment
+        showNotification(`Success! Order ${assignment.orderId} assigned to ${assignment.driverName}`);
+        logMessage(`Order ${assignment.orderId} successfully assigned to driver ${assignment.driverId}`);
+        
+        // Update the order marker to show it's assigned
+        if (orderMarkers[assignment.orderId]) {
+            orderMarkers[assignment.orderId].setIcon({
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: '#198754', // Green for assigned
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#FFFFFF'
+            });
+            
+            // Update info window
+            const infoWindow = new google.maps.InfoWindow({
+                content: createAssignedOrderInfoContent(assignment)
+            });
+            
+            orderMarkers[assignment.orderId].addListener('click', () => {
+                infoWindow.open(map, orderMarkers[assignment.orderId]);
+            });
+        }
+        
+        // Reset driver marker
+        if (driverMarkers[assignment.driverId]) {
+            const colorIndex = parseInt(assignment.driverId.replace('R', '')) % colors.length;
+            const color = colors[colorIndex];
+            
+            driverMarkers[assignment.driverId].setIcon({
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: color,
+                fillOpacity: 0.9,
+                strokeWeight: 2,
+                strokeColor: 'white'
+            });
+        }
+        
+        // Remove assignment line
+        if (assignmentLines[assignment.orderId]) {
+            assignmentLines[assignment.orderId].setMap(null);
+            delete assignmentLines[assignment.orderId];
+        }
+        
+        // Reset assignment UI
+        document.getElementById('assignmentDetails').style.display = 'none';
+        currentAssignment = null;
+        
+    } catch (error) {
+        logMessage(`Assignment failed: ${error.message}`);
+        showNotification(`Error assigning order: ${error.message}`);
+    } finally {
+        // Reset button state
+        document.getElementById("confirmAssignmentBtn").disabled = false;
+        document.getElementById("confirmAssignmentBtn").innerHTML = 'Confirm Assignment';
+    }
+}
+        // NEW: Create content for assigned order info window
+        function createAssignedOrderInfoContent(assignment) {
+            return `
+                <div class="order-info-window">
+                    <div class="order-info-title">Order ${assignment.orderId} (Assigned)</div>
+                    <div><strong>Assigned to:</strong> ${assignment.driverName}</div>
+                    <div><strong>Driver ID:</strong> ${assignment.driverId}</div>
+                    <div><strong>Distance:</strong> ${assignment.distance.toFixed(2)} km</div>
+                    <div><strong>Status:</strong> <span class="badge bg-success">Assigned</span></div>
+                    <div><strong>Assigned at:</strong> ${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
         }
 
         // Content creation functions
@@ -872,7 +979,7 @@
             const order = await fetchOrderDetails(orderId);
             if (order) {
                 // Fill the latitude and longitude fields
-                document.getElementById("orderLatInput").value = order.lat;
+                document.getElementById("orderLatInput").value = order.lat
                 document.getElementById("orderLngInput").value = order.lng;
                 
                 // Enable the "Show Order on Map" button
@@ -896,6 +1003,7 @@
 
         document.getElementById("confirmAssignmentBtn").addEventListener("click", () => {
             if (currentAssignment) {
+                confirmOrderAssignment(currentAssignment);
                 logMessage(`Confirmed assignment: Driver ${currentAssignment.driverId} assigned to order ${currentAssignment.orderId}`);
                 showNotification(`Assignment confirmed!\nDriver: ${currentAssignment.driverName}\nOrder: ${currentAssignment.orderId}`);
                 
