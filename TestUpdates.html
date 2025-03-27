@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Portal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Improved styling */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            max-width: 400px;
+            margin: 5rem auto;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: white;
+        }
+        
+        .driver-dashboard {
+            display: none;
+            margin-top: 2rem;
+        }
+        
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+            border: none;
+        }
+        
+        .card-header {
+            background-color: var(--primary);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.65rem;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn-primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection" class="login-container">
+            <div class="text-center mb-4">
+                <img src="https://via.placeholder.com/100x100" alt="Company Logo" class="mb-3">
+                <h2>Driver Login</h2>
+                <p class="text-muted">Please sign in to access your dashboard</p>
+            </div>
+            <div class="mb-3">
+                <label for="phoneInput" class="form-label">Phone Number</label>
+                <input type="text" class="form-control" id="phoneInput" placeholder="+201234567890">
+            </div>
+            <div class="mb-3">
+                <label for="passwordInput" class="form-label">Password</label>
+                <input type="password" class="form-control" id="passwordInput" placeholder="Enter your password">
+            </div>
+            <div class="d-grid gap-2">
+                <button id="loginBtn" class="btn btn-primary">
+                    <span id="loginBtnText">Login</span>
+                    <span id="loginSpinner" class="loading-spinner" style="display: none;"></span>
+                </button>
+            </div>
+            <div id="loginError" class="alert alert-danger mt-3" style="display: none;"></div>
+        </div>
+
+        <!-- Driver Dashboard -->
+        <div id="driverDashboard" class="driver-dashboard">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center">
+                    <img src="https://via.placeholder.com/50x50" alt="Driver Avatar" class="rounded-circle me-3">
+                    <div>
+                        <h4 class="mb-0" id="driverName">John Driver</h4>
+                        <small class="text-muted" id="driverId">ID: DRV-001</small>
+                    </div>
+                </div>
+                <div>
+                    <button id="toggleOnlineBtn" class="btn btn-success me-2">Online</button>
+                    <button id="logoutBtn" class="btn btn-outline-danger">Logout</button>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">My Location</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="map"></div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <small class="text-muted" id="lastUpdate">Last updated: Just now</small>
+                                <button id="centerMapBtn" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-geo-alt"></i> Center Map
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">My Stats</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Completed Orders:</span>
+                                <strong id="completedOrders">24</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Rating:</span>
+                                <strong id="driverRating">4.8 <span class="text-warning">★</span></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Vehicle:</span>
+                                <strong id="vehicleType">Motorcycle</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Status:</span>
+                                <span class="badge bg-success status-badge" id="driverStatus">Online</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Current Assignment</h5>
+                        </div>
+                        <div class="card-body" id="assignmentInfo">
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                <p class="mt-2">No current assignment</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush" id="activityLog">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Logged in to system</span>
+                            <small class="text-muted">Just now</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDw2L54vytvX214rcrejbI9T-tqZDI58xE&callback=initMap" async defer></script>
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+
+    <script>
+        // Global variables
+        let connection;
+        let map;
+        let driverMarker;
+        let driverInfoWindow;
+        let currentDriver = null;
+        let authToken = null;
+        let isOnline = true;
+        let watchPositionId = null;
+        let orderMarker = null;
+        let orderInfoWindow = null;
+        let assignmentLine = null;
+        
+        // Initialize the map
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 29.9514, lng: 30.9247 },
+                zoom: 12,
+                mapTypeControl: true,
+                streetViewControl: false,
+                fullscreenControl: true,
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+            
+            // Add click listener to map to close info windows
+            map.addListener("click", () => {
+                if (driverInfoWindow) driverInfoWindow.close();
+                if (orderInfoWindow) orderInfoWindow.close();
+            });
+        }
+
+        // Setup SignalR connection for driver
+        function setupDriverConnection(driverId) {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(`https://laundry.runasp.net/driverHub`, {
+                    accessTokenFactory: () => authToken
+                })
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Warning)
+                .build();
+
+            // Connection events
+            connection.onclose(async () => {
+                addActivityLog("Connection lost. Attempting to reconnect...", "warning");
+                updateDriverStatus(false);
+            });
+
+            connection.onreconnecting(error => {
+                addActivityLog(`Connection lost. Reconnecting... Error: ${error}`, "warning");
+                updateDriverStatus(false);
+            });
+
+            connection.onreconnected(connectionId => {
+                addActivityLog(`Reconnected with ID: ${connectionId}`, "success");
+                updateDriverStatus(true);
+                // Re-register the driver after reconnection
+                if (currentDriver) {
+                    connection.invoke("RegisterDriver", currentDriver.id)
+                        .catch(err => console.error("Registration failed:", err));
+                }
+            });
+
+            // Hub methods
+            connection.on("ReceiveLocationUpdate", (receivedDriverId, lat, lng, timestamp) => {
+                if (receivedDriverId === driverId) {
+                    updateDriverPositionOnMap(lat, lng, timestamp);
+                }
+            });
+
+            connection.on("ReceiveAssignment", (orderId, orderDetails) => {
+                updateAssignmentInfo(orderId, orderDetails);
+                addActivityLog(`New assignment received: Order ${orderId}`, "info");
+            });
+
+            connection.on("ReceiveBroadcast", (message) => {
+                addActivityLog(`Broadcast: ${message}`, "info");
+                showNotification(message, "info");
+            });
+
+            connection.on("OrderCompleted", (orderId) => {
+                if (document.getElementById("currentOrderId")?.textContent.includes(orderId)) {
+                    clearAssignment();
+                    addActivityLog(`Order ${orderId} marked as completed`, "success");
+                    showNotification(`Order ${orderId} completed successfully!`, "success");
+                }
+            });
+
+            startDriverConnection(driverId);
+        }
+
+        async function startDriverConnection(driverId) {
+            try {
+                await connection.start();
+                await connection.invoke("RegisterDriver", driverId);
+                addActivityLog("Connected to server", "success");
+                updateDriverStatus(true);
+                
+                // Start sending location updates
+                startLocationUpdates(driverId);
+                
+            } catch (err) {
+                addActivityLog(`Connection error: ${err}`, "danger");
+                setTimeout(() => startDriverConnection(driverId), 5000);
+            }
+        }
+
+        // Start sending location updates
+        function startLocationUpdates(driverId) {
+    if (!isOnline) return;
+    
+    if (navigator.geolocation) {
+        // Stop any existing watcher
+        if (watchPositionId) {
+            navigator.geolocation.clearWatch(watchPositionId);
+        }
+        
+        // Configure options with longer timeout and higher accuracy
+        const options = {
+            enableHighAccuracy: true,
+            maximumAge: 30000,  // Accept cached position up to 30 seconds old
+            timeout: 60000       // Wait up to 60 seconds for position
+        };
+        
+        // Real location updates
+        watchPositionId = navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const timestamp = new Date().toISOString();
+                
+                document.getElementById("lastUpdate").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                
+                if (connection && connection.state === signalR.HubConnectionState.Connected) {
+                    connection.invoke("SendLocationUpdate", driverId, lat, lng)
+                        .catch(err => {
+                            console.error("Send failed:", err);
+                            addActivityLog("Failed to send location update", "danger");
+                        });
+                }
+                    
+                updateDriverPositionOnMap(lat, lng, timestamp);
+            },
+            (error) => {
+                let errorMessage = "Location error: ";
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += "Location access denied by user";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += "Location information unavailable";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += "Location request timed out";
+                        // Fallback to simulated updates
+                        simulateDriverMovement(driverId);
+                        break;
+                    default:
+                        errorMessage += "Unknown error";
+                }
+                
+                console.error("Geolocation error:", error);
+                addActivityLog(errorMessage, "warning");
+                
+                // Fallback to simulated updates if real location fails
+                if (isOnline) {
+                    simulateDriverMovement(driverId);
+                }
+            },
+            options
+        );
+    } else {
+        addActivityLog("Geolocation not supported by browser", "warning");
+        // Fallback to simulated updates if geolocation not available
+        if (isOnline) {
+            simulateDriverMovement(driverId);
+        }
+    }
+}
+        // Simulate driver movement (fallback)
+        function simulateDriverMovement(driverId) {
+            if (!isOnline) return;
+            
+            let lat = 29.9514 + (Math.random() * 0.1 - 0.05);
+            let lng = 30.9247 + (Math.random() * 0.1 - 0.05);
+            let heading = Math.random() * 360;
+            
+            const interval = setInterval(() => {
+                if (!isOnline || !connection || connection.state !== signalR.HubConnectionState.Connected) {
+                    clearInterval(interval);
+                    return;
+                }
+                
+                const distance = 0.001 + Math.random() * 0.002;
+                lat += distance * Math.cos(heading * Math.PI / 180);
+                lng += distance * Math.sin(heading * Math.PI / 180);
+                heading += (Math.random() * 30 - 15);
+                
+                document.getElementById("lastUpdate").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                
+                connection.invoke("SendLocationUpdate", driverId, lat, lng)
+                    .catch(err => console.error("Send failed:", err));
+                    
+                updateDriverPositionOnMap(lat, lng);
+            }, 5000);
+            
+            return interval;
+        }
+
+        // Update driver position on map
+        function updateDriverPositionOnMap(lat, lng, timestamp) {
+            const position = { lat, lng };
+            const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString() : 'Just now';
+            
+            if (driverMarker) {
+                driverMarker.setPosition(position);
+                driverInfoWindow.setContent(`
+                    <div class="driver-info-window">
+                        <div class="driver-info-title">${currentDriver.name}</div>
+                        <div><small>ID: ${currentDriver.id}</small></div>
+                        <div><strong>Status:</strong> <span class="badge ${isOnline ? 'bg-success' : 'bg-secondary'}">${isOnline ? 'Online' : 'Offline'}</span></div>
+                        <div><strong>Last Update:</strong> ${timeStr}</div>
+                        <div><strong>Location:</strong></div>
+                        <div>Lat: ${lat.toFixed(6)}</div>
+                        <div>Lng: ${lng.toFixed(6)}</div>
+                    </div>
+                `);
+            } else {
+                // Create marker if it doesn't exist
+                driverMarker = new google.maps.Marker({
+                    position,
+                    map,
+                    title: currentDriver.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: '#3498db',
+                        fillOpacity: 0.9,
+                        strokeWeight: 2,
+                        strokeColor: 'white'
+                    },
+                    animation: google.maps.Animation.DROP
+                });
+                
+                driverInfoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div class="driver-info-window">
+                            <div class="driver-info-title">${currentDriver.name}</div>
+                            <div><small>ID: ${currentDriver.id}</small></div>
+                            <div><strong>Status:</strong> <span class="badge ${isOnline ? 'bg-success' : 'bg-secondary'}">${isOnline ? 'Online' : 'Offline'}</span></div>
+                            <div><strong>Last Update:</strong> ${timeStr}</div>
+                            <div><strong>Location:</strong></div>
+                            <div>Lat: ${lat.toFixed(6)}</div>
+                            <div>Lng: ${lng.toFixed(6)}</div>
+                        </div>
+                    `
+                });
+                
+                driverMarker.addListener("click", () => {
+                    if (orderInfoWindow) orderInfoWindow.close();
+                    driverInfoWindow.open(map, driverMarker);
+                });
+                
+                // Open info window by default
+                driverInfoWindow.open(map, driverMarker);
+            }
+            
+            // Center map on driver if it's not following an order
+            if (!orderMarker) {
+                map.panTo(position);
+            }
+        }
+
+        // Update assignment information
+        function updateAssignmentInfo(orderId, orderDetails) {
+            const assignmentDiv = document.getElementById("assignmentInfo");
+            
+            if (orderId) {
+                const distance = orderDetails.distance ? orderDetails.distance.toFixed(2) + ' km' : 'Calculating...';
+                
+                assignmentDiv.innerHTML = `
+                    <div class="assignment-header mb-3">
+                        <h6 class="mb-1"><i class="bi bi-box-seam"></i> Order <span id="currentOrderId">${orderId}</span></h6>
+                        <span class="badge bg-primary">Assigned</span>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">Customer</small>
+                        <p class="mb-1">${orderDetails.customerName || 'Not specified'}</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">Address</small>
+                        <p class="mb-1">${orderDetails.address}</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">Distance</small>
+                        <p class="mb-1">${distance}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Instructions</small>
+                        <p class="mb-1">${orderDetails.instructions || 'No special instructions'}</p>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button id="navigateBtn" class="btn btn-primary">
+                            <i class="bi bi-geo-alt"></i> Navigate
+                        </button>
+                        <button id="completeOrderBtn" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Mark as Completed
+                        </button>
+                    </div>
+                `;
+                
+                // Add event listeners for new buttons
+                document.getElementById("navigateBtn")?.addEventListener("click", () => {
+                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${orderDetails.lat},${orderDetails.lng}`, '_blank');
+                });
+                
+                document.getElementById("completeOrderBtn")?.addEventListener("click", () => {
+                    completeOrder(orderId);
+                });
+                
+                // Add order marker to map
+                addOrderMarker(orderId, orderDetails);
+            } else {
+                clearAssignment();
+            }
+        }
+
+        // Add order marker to map
+        function addOrderMarker(orderId, orderDetails) {
+            // Remove existing order marker if any
+            if (orderMarker) {
+                orderMarker.setMap(null);
+                orderMarker = null;
+            }
+            
+            if (assignmentLine) {
+                assignmentLine.setMap(null);
+                assignmentLine = null;
+            }
+            
+            // Create new order marker
+            orderMarker = new google.maps.Marker({
+                position: { lat: orderDetails.lat, lng: orderDetails.lng },
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: '#e74c3c',
+                    fillOpacity: 1,
+                    strokeWeight: 2,
+                    strokeColor: '#FFFFFF'
+                },
+                title: `Order ${orderId}`
+            });
+            
+            orderInfoWindow = new google.maps.InfoWindow({
+                content: `
+                    <div class="order-info-window">
+                        <div class="order-info-title">Order ${orderId}</div>
+                        <div><strong>Customer:</strong> ${orderDetails.customerName || 'Not specified'}</div>
+                        <div><strong>Address:</strong> ${orderDetails.address}</div>
+                        <div><strong>Status:</strong> <span class="badge bg-primary">Assigned</span></div>
+                    </div>
+                `
+            });
+            
+            orderMarker.addListener('click', () => {
+                if (driverInfoWindow) driverInfoWindow.close();
+                orderInfoWindow.open(map, orderMarker);
+            });
+            
+            // Draw line from driver to order if driver position is known
+            if (driverMarker) {
+                const driverPos = driverMarker.getPosition();
+                assignmentLine = new google.maps.Polyline({
+                    path: [
+                        driverPos,
+                        { lat: orderDetails.lat, lng: orderDetails.lng }
+                    ],
+                    geodesic: true,
+                    strokeColor: '#e74c3c',
+                    strokeOpacity: 0.7,
+                    strokeWeight: 2,
+                    strokeDashArray: [5, 5],
+                    map: map
+                });
+                
+                // Calculate distance
+                if (google.maps.geometry) {
+                    const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                        driverPos,
+                        new google.maps.LatLng(orderDetails.lat, orderDetails.lng)
+                    ) / 1000; // Convert to km
+                    
+                    document.querySelector("#assignmentInfo .mb-1:nth-of-type(3)").textContent = distance.toFixed(2) + ' km';
+                }
+            }
+            
+            // Center map on order
+            map.panTo({ lat: orderDetails.lat, lng: orderDetails.lng });
+            map.setZoom(14);
+        }
+
+        // Clear current assignment
+        function clearAssignment() {
+            document.getElementById("assignmentInfo").innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p class="mt-2">No current assignment</p>
+                </div>
+            `;
+            
+            if (orderMarker) {
+                orderMarker.setMap(null);
+                orderMarker = null;
+            }
+            
+            if (assignmentLine) {
+                assignmentLine.setMap(null);
+                assignmentLine = null;
+            }
+            
+            if (driverMarker) {
+                map.panTo(driverMarker.getPosition());
+                map.setZoom(14);
+            }
+        }
+
+        // Complete order function
+        function completeOrder(orderId) {
+            if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                showNotification("Cannot complete order - connection lost", "danger");
+                return;
+            }
+            
+            // Show loading state
+            const completeBtn = document.getElementById("completeOrderBtn");
+            const originalText = completeBtn.innerHTML;
+            completeBtn.disabled = true;
+            completeBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...`;
+            
+            connection.invoke("CompleteOrder", orderId)
+                .then(() => {
+                    showNotification(`Order ${orderId} marked as completed`, "success");
+                    clearAssignment();
+                })
+                .catch(err => {
+                    console.error("Error completing order:", err);
+                    showNotification(`Failed to complete order: ${err}`, "danger");
+                })
+                .finally(() => {
+                    completeBtn.disabled = false;
+                    completeBtn.innerHTML = originalText;
+                });
+        }
+
+        // Toggle online status
+        function toggleOnlineStatus() {
+            isOnline = !isOnline;
+            
+            if (isOnline) {
+                // Go online
+                document.getElementById("toggleOnlineBtn").className = "btn btn-success";
+                document.getElementById("toggleOnlineBtn").innerHTML = '<i class="bi bi-wifi"></i> Online';
+                document.getElementById("driverStatus").className = "badge bg-success status-badge";
+                document.getElementById("driverStatus").textContent = "Online";
+                
+                // Restart location updates
+                if (currentDriver) {
+                    startLocationUpdates(currentDriver.id);
+                }
+                
+                addActivityLog("Went online", "success");
+            } else {
+                // Go offline
+                document.getElementById("toggleOnlineBtn").className = "btn btn-secondary";
+                document.getElementById("toggleOnlineBtn").innerHTML = '<i class="bi bi-wifi-off"></i> Offline';
+                document.getElementById("driverStatus").className = "badge bg-secondary status-badge";
+                document.getElementById("driverStatus").textContent = "Offline";
+                
+                // Stop location updates
+                if (watchPositionId) {
+                    navigator.geolocation.clearWatch(watchPositionId);
+                    watchPositionId = null;
+                }
+                
+                addActivityLog("Went offline", "warning");
+            }
+            
+            // Update marker color
+            if (driverMarker) {
+                driverMarker.setIcon({
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: isOnline ? '#3498db' : '#95a5a6',
+                    fillOpacity: 0.9,
+                    strokeWeight: 2,
+                    strokeColor: 'white'
+                });
+            }
+            
+            // Update info window
+            if (driverInfoWindow && driverMarker) {
+                const content = driverInfoWindow.getContent();
+                const newContent = content.replace(
+                    /<span class="badge (.*?)">(.*?)<\/span>/,
+                    `<span class="badge ${isOnline ? 'bg-success' : 'bg-secondary'}">${isOnline ? 'Online' : 'Offline'}</span>`
+                );
+                driverInfoWindow.setContent(newContent);
+            }
+        }
+
+        // Update driver status display
+        function updateDriverStatus(connected) {
+            const statusElement = document.getElementById("driverStatus");
+            
+            if (connected) {
+                statusElement.className = "badge bg-success status-badge";
+                statusElement.textContent = "Online";
+            } else {
+                statusElement.className = "badge bg-danger status-badge";
+                statusElement.textContent = "Disconnected";
+            }
+        }
+
+        // Add activity log entry
+        function addActivityLog(message, type = "info") {
+            const activityLog = document.getElementById("activityLog");
+            const li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+            
+            let icon = "";
+            let textClass = "";
+            
+            switch(type) {
+                case "success":
+                    icon = '<i class="bi bi-check-circle-fill text-success me-2"></i>';
+                    textClass = "text-success";
+                    break;
+                case "warning":
+                    icon = '<i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>';
+                    textClass = "text-warning";
+                    break;
+                case "danger":
+                    icon = '<i class="bi bi-x-circle-fill text-danger me-2"></i>';
+                    textClass = "text-danger";
+                    break;
+                default:
+                    icon = '<i class="bi bi-info-circle-fill text-primary me-2"></i>';
+                    textClass = "text-primary";
+            }
+            
+            li.innerHTML = `
+                <span class="${textClass}">${icon}${message}</span>
+                <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+            `;
+            
+            // Add to top of list
+            if (activityLog.firstChild) {
+                activityLog.insertBefore(li, activityLog.firstChild);
+            } else {
+                activityLog.appendChild(li);
+            }
+            
+            // Limit to 20 items
+            if (activityLog.children.length > 20) {
+                activityLog.removeChild(activityLog.lastChild);
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = "info") {
+            const notification = document.createElement("div");
+            notification.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+            notification.style.zIndex = "1000";
+            notification.style.width = "300px";
+            notification.style.boxShadow = "0 2px 10px rgba(0,0,0,0.1)";
+            notification.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="bi ${type === 'success' ? 'bi-check-circle-fill' : 
+                                      type === 'danger' ? 'bi-x-circle-fill' : 
+                                      type === 'warning' ? 'bi-exclamation-triangle-fill' : 
+                                      'bi-info-circle-fill'} me-2"></i>
+                    <div>${message}</div>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add("fade");
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 5000);
+        }
+
+        // Login function
+        async function loginDriver(phone, password) {
+            try {
+                // Show loading state
+                document.getElementById("loginBtnText").textContent = "Logging in...";
+                document.getElementById("loginSpinner").style.display = "inline-block";
+                document.getElementById("loginBtn").disabled = true;
+                document.getElementById("loginError").style.display = "none";
+                
+                const formData = new FormData();
+formData.append('Phone', phone);
+formData.append('Password', password);
+                // Make login request
+                const response = await fetch('https://laundry.runasp.net/api/Accounts/Login', {
+    method: 'POST',
+    headers: {
+        'accept': 'text/plain'
+    },
+    body: formData
+});
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.status) {
+                    throw new Error(data.message || "Login failed");
+                }
+                
+                // Store token
+                authToken = data.data.token;
+                
+                // Get driver info using the token
+                const driverInfo = await getDriverInfo(authToken);
+                
+                if (!driverInfo) {
+                    throw new Error("Failed to fetch driver information");
+                }
+                
+                // Successful login
+                currentDriver = {
+                    id: driverInfo.id,
+                    name: driverInfo.fullName,
+                    phone: phone,
+                    vehicle: driverInfo.vehicleType || "Not specified",
+                    rating: driverInfo.rating || "N/A",
+                    completedOrders: driverInfo.completedOrders || 0
+                };
+                
+                // Show dashboard
+                document.getElementById("loginSection").style.display = "none";
+                document.getElementById("driverDashboard").style.display = "block";
+                
+                // Update driver info display
+                document.getElementById("driverName").textContent = currentDriver.name;
+                document.getElementById("driverId").textContent = `ID: ${currentDriver.id}`;
+                document.getElementById("completedOrders").textContent = currentDriver.completedOrders;
+                document.getElementById("driverRating").innerHTML = `${currentDriver.rating} <span class="text-warning">★</span>`;
+                document.getElementById("vehicleType").textContent = currentDriver.vehicle;
+                
+                // Add login activity
+                addActivityLog("Logged in to system", "success");
+                
+                // Setup SignalR connection with authentication
+                setupDriverConnection(currentDriver.id);
+                
+                // Center map on driver's location (or default if not available)
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            map.setCenter({
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            });
+                            map.setZoom(15);
+                        },
+                        (error) => {
+                            console.error("Geolocation error:", error);
+                            addActivityLog(`Location error: ${error.message}`, "warning");
+                        }
+                    );
+                }
+            } catch (error) {
+                document.getElementById("loginError").textContent = error.message;
+                document.getElementById("loginError").style.display = "block";
+                addActivityLog(`Login failed: ${error.message}`, "danger");
+            } finally {
+                // Reset login button state
+                document.getElementById("loginBtnText").textContent = "Login";
+                document.getElementById("loginSpinner").style.display = "none";
+                document.getElementById("loginBtn").disabled = false;
+            }
+        }
+
+        // Get driver info using the auth token
+        async function getDriverInfo(token) {
+            try {
+                const response = await fetch('https://laundry.runasp.net/api/Accounts/GetCurrentUser', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.data) {
+                    return data.data;
+                } else {
+                    throw new Error(data.message || "Failed to fetch driver info");
+                }
+            } catch (error) {
+                console.error("Error fetching driver info:", error);
+                return null;
+            }
+        }
+
+        // Logout function
+        function logoutDriver() {
+            if (connection) {
+                connection.stop();
+            }
+            
+            // Stop location updates
+            if (watchPositionId) {
+                navigator.geolocation.clearWatch(watchPositionId);
+                watchPositionId = null;
+            }
+            
+            // Reset UI
+            document.getElementById("loginSection").style.display = "block";
+            document.getElementById("driverDashboard").style.display = "none";
+            document.getElementById("phoneInput").value = "";
+            document.getElementById("passwordInput").value = "";
+            document.getElementById("loginError").style.display = "none";
+            
+            // Reset map
+            if (driverMarker) {
+                driverMarker.setMap(null);
+                driverMarker = null;
+            }
+            if (orderMarker) {
+                orderMarker.setMap(null);
+                orderMarker = null;
+            }
+            if (assignmentLine) {
+                assignmentLine.setMap(null);
+                assignmentLine = null;
+            }
+            
+            // Reset variables
+            currentDriver = null;
+            authToken = null;
+            isOnline = true;
+        }
+
+        // Event listeners
+        document.getElementById("loginBtn").addEventListener("click", () => {
+            const phone = document.getElementById("phoneInput").value.trim();
+            const password = document.getElementById("passwordInput").value.trim();
+            
+            if (!phone || !password) {
+                document.getElementById("loginError").textContent = "Please enter both phone number and password";
+                document.getElementById("loginError").style.display = "block";
+                return;
+            }
+            
+            loginDriver(phone, password);
+        });
+
+        document.getElementById("logoutBtn").addEventListener("click", logoutDriver);
+
+        document.getElementById("toggleOnlineBtn").addEventListener("click", toggleOnlineStatus);
+
+        document.getElementById("centerMapBtn")?.addEventListener("click", () => {
+            if (driverMarker) {
+                map.panTo(driverMarker.getPosition());
+                map.setZoom(15);
+                if (driverInfoWindow) {
+                    driverInfoWindow.open(map, driverMarker);
+                }
+            }
+        });
+
+        // Allow login on Enter key
+        document.getElementById("passwordInput").addEventListener("keyup", (event) => {
+            if (event.key === "Enter") {
+                document.getElementById("loginBtn").click();
+            }});
+    </script>
+</body>
+</html>
