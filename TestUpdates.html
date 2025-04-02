@@ -134,11 +134,11 @@
             </div>
             <div class="mb-3">
                 <label for="phoneInput" class="form-label">Phone Number</label>
-                <input type="text" class="form-control" id="phoneInput" placeholder="+201234567890">
+                <input type="text" class="form-control" id="phoneInput" placeholder="+201234567890" value="+201127929624">
             </div>
             <div class="mb-3">
                 <label for="passwordInput" class="form-label">Password</label>
-                <input type="password" class="form-control" id="passwordInput" placeholder="Enter your password">
+                <input type="password" class="form-control" id="passwordInput" placeholder="Enter your password" value="123456">
             </div>
             <div class="d-grid gap-2">
                 <button id="loginBtn" class="btn btn-primary">
@@ -177,11 +177,15 @@
                             <div id="map"></div>
                             <div class="d-flex justify-content-between mt-2">
                                 <small class="text-muted" id="lastUpdate">Last updated: Just now</small>
+                                <button id="showAllOrdersBtn" class="btn btn-sm btn-outline-secondary me-2">
+                                    <i class="bi bi-map"></i> Show All Orders
+                                </button>
                                 <button id="centerMapBtn" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-geo-alt"></i> Center Map
                                 </button>
                             </div>
                         </div>
+
                     </div>
 
                     <div class="card mt-3">
@@ -412,6 +416,14 @@
                 const orders = await response.json();
                 currentOrders = orders.data || [];
 
+                // Normalize order coordinates
+                currentOrders = currentOrders.map(order => ({
+                    ...order,
+                    // Use whichever property names your API actually returns
+                    lat: order.lat || order.deliveryLatitude,
+                    lng: order.lang || order.deliveryLongitude
+                }));
+
                 updateOrdersList(currentOrders);
                 findAndDisplayActiveOrder();
 
@@ -421,7 +433,6 @@
                 addActivityLog("Failed to load orders: " + error.message, "danger");
             }
         }
-
         function findAndDisplayActiveOrder() {
             const activeOrder = currentOrders.find(o => o.status === "Confirmed");
             if (activeOrder) {
@@ -454,8 +465,8 @@
             });
         }
 
+        // Update the createOrderItem function to use correct coordinates
         function createOrderItem(order) {
-            console.log(order);
             const orderItem = document.createElement("div");
             orderItem.className = `list-group-item list-group-item-action order-item ${order.orderStatus === "Confirmed" ? "active" : ""}`;
             orderItem.innerHTML = `
@@ -463,23 +474,70 @@
             <h6 class="mb-1">Order #${order.id}</h6>
             <span class="badge ${getStatusBadgeClass(order.orderStatus)}">${order.orderStatus}</span>
         </div>
-        <small>Latitude: ${order.lat},</br> Longitude: ${order.lang}</small></br>
-        <small>Customer: ${order.customer || 'N/A'}</small></br>
-        <small>Total Price: ${order.totalPrice || 'N/A'}</small></br>
-
+        <small>Customer: ${order.customer || 'N/A'}</small><br>
+        <small>Total Price: ${order.totalPrice || 'N/A'}</small><br>
+        <small><strong>Latitude:</strong> ${order.lat || 'N/A'}</small><br>
+                <small><strong>Longtude:</strong> ${order.lng || 'N/A'}</small>
     `;
             orderItem.addEventListener("click", () => showOrderDetails(order));
             return orderItem;
         }
 
         // Show order details on map
+        // Enhanced showOrderDetails function
         function showOrderDetails(order) {
+            if (!order.lat || !order.lng) {
+                showNotification("Order location data is missing", "warning");
+                return;
+            }
+
             clearOrderMarker();
-            createOrderMarker(order);
-            createOrderInfoWindow(order);
-            centerMapOnOrder(order);
-            drawAssignmentLine(order);
+
+            // Create order marker
+            orderMarker = new google.maps.Marker({
+                position: { lat: parseFloat(order.lat), lng: parseFloat(order.lng) },
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: '#e74c3c',
+                    fillOpacity: 1,
+                    strokeWeight: 2,
+                    strokeColor: '#FFFFFF'
+                },
+                title: `Order ${order.id}`
+            });
+
+            // Create info window
+            orderInfoWindow = new google.maps.InfoWindow({
+                content: `
+            <div class="order-info-window">
+                <div class="order-info-title">Order #${order.id}</div>
+                <div><strong>Customer:</strong> ${order.customer || 'N/A'}</div>
+                <div><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(order.orderStatus)}">${order.orderStatus}</span></div>
+                <div><strong>Total Price:</strong> ${order.totalPrice || 'N/A'}</div>
+                <div><strong>Latitude:</strong> ${order.lat || 'N/A'}</div>
+                <div><strong>Longtude:</strong> ${order.lng || 'N/A'}</div>
+            </div>
+        `
+            });
+
+            // Add click listener to marker
+            orderMarker.addListener('click', () => {
+                closeInfoWindows();
+                orderInfoWindow.open(map, orderMarker);
+            });
+
+            // Center map on order
+            map.panTo({ lat: parseFloat(order.lat), lng: parseFloat(order.lng) });
+            map.setZoom(14);
+
+            // Draw line from driver to order if driver location is available
+            if (driverMarker) {
+                drawAssignmentLine(order);
+            }
         }
+
 
         function clearOrderMarker() {
             if (orderMarker) {
@@ -521,17 +579,80 @@
             map.setZoom(14);
         }
 
+        // Update drawAssignmentLine to use correct coordinates
         function drawAssignmentLine(order) {
-            if (driverMarker) {
-                if (assignmentLine) assignmentLine.setMap(null);
-                const driverPos = driverMarker.getPosition();
-                assignmentLine = new google.maps.Polyline({
-                    path: [driverPos, { lat: order.deliveryLatitude, lng: order.deliveryLongitude }],
-                    geodesic: true, strokeColor: '#e74c3c', strokeOpacity: 0.7, strokeWeight: 2, strokeDashArray: [5, 5], map: map
-                });
+            if (assignmentLine) {
+                assignmentLine.setMap(null);
             }
+
+            const driverPos = driverMarker.getPosition();
+            assignmentLine = new google.maps.Polyline({
+                path: [
+                    driverPos,
+                    { lat: parseFloat(order.lat), lng: parseFloat(order.lng) }
+                ],
+                geodesic: true,
+                strokeColor: '#e74c3c',
+                strokeOpacity: 0.7,
+                strokeWeight: 2,
+                strokeDashArray: [5, 5],
+                map: map
+            });
         }
 
+        function isValidCoordinate(coord) {
+            return coord !== null && coord !== undefined && !isNaN(parseFloat(coord));
+        }
+        function getOrderMarkerIcon(status) {
+            const statusColors = {
+                'assigned': '#3498db',
+                'confirmed': '#f39c12',
+                'inprogress': '#2ecc71',
+                'completed': '#27ae60',
+                'cancelled': '#e74c3c'
+            };
+            return {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: statusColors[status.toLowerCase()] || '#3498db',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#FFFFFF'
+            };
+        }
+        function showAllOrdersOnMap() {
+            // Clear existing order markers
+            if (orderMarker) {
+                orderMarker.setMap(null);
+            }
+
+            // Create bounds to fit all orders
+            const bounds = new google.maps.LatLngBounds();
+
+            // Add driver position if available
+            if (driverMarker) {
+                bounds.extend(driverMarker.getPosition());
+            }
+
+            // Add each order to the map and bounds
+            currentOrders.forEach(order => {
+                if (order.lat && order.lng) {
+                    const position = new google.maps.LatLng(parseFloat(order.lat), parseFloat(order.lng));
+                    new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        icon: getOrderMarkerIcon(order.orderStatus),
+                        title: `Order ${order.id}`
+                    });
+                    bounds.extend(position);
+                }
+            });
+
+            // Fit map to bounds
+            if (!bounds.isEmpty()) {
+                map.fitBounds(bounds);
+            }
+        }
         // Helper function for status badge class
         function getStatusBadgeClass(status) {
             const statusMap = {
@@ -561,16 +682,16 @@
                 address: order.deliveryAddress,
                 lat: order.lat,
                 lng: order.lang,
-                instructions: order.specialInstructions
             });
         }
 
         // Add order to list
         function addOrderToList(orderId, orderDetails) {
             const newOrder = {
-                id: orderId, customerName: orderDetails.customerName || 'Not specified',
-                deliveryAddress: orderDetails.address, deliveryLatitude: orderDetails.lat,
-                deliveryLongitude: orderDetails.lng, specialInstructions: orderDetails.instructions, status: "Assigned"
+                id: orderId,
+                customerName: orderDetails.customerName || 'Not specified',
+                Lat: orderDetails.lat,
+                Lng: orderDetails.lng,
             };
             currentOrders.unshift(newOrder);
             updateOrdersList(currentOrders);
@@ -667,17 +788,39 @@
 
         function createDriverMarker(position) {
             driverMarker = new google.maps.Marker({
-                position, map, title: currentDriver.fullName,
-                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: isOnline ? '#3498db' : '#95a5a6', fillOpacity: 0.9, strokeWeight: 2, strokeColor: 'white' },
+                position,
+                map,
+                title: currentDriver.fullName,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: isOnline ? '#3498db' : '#95a5a6',
+                    fillOpacity: 0.9,
+                    strokeWeight: 2,
+                    strokeColor: 'white'
+                },
                 animation: google.maps.Animation.DROP
             });
+
             createDriverInfoWindow(position);
             driverInfoWindow.open(map, driverMarker);
         }
 
         function createDriverInfoWindow(position) {
+            driverInfoWindow = new google.maps.InfoWindow({
+                content: getDriverInfoWindowContent(position.lat, position.lng)
+            });
+
+            // Corrected: Using addListener instead of addEventListener
+            google.maps.event.addListener(driverMarker, "click", () => {
+                closeInfoWindows();
+                driverInfoWindow.open(map, driverMarker);
+            });
+        }
+
+        function createDriverInfoWindow(position) {
             driverInfoWindow = new google.maps.InfoWindow({ content: getDriverInfoWindowContent(position.lat, position.lng) });
-            driverMarker.addEventListener("click", () => {
+            driverMarker.addListener("click", () => {
                 closeInfoWindows();
                 driverInfoWindow.open(map, driverMarker);
             });
@@ -692,16 +835,21 @@
         function getDriverInfoWindowContent(lat, lng) {
             const timeStr = new Date().toLocaleTimeString();
             return `
-                <div class="driver-info-window">
-                    <div class="driver-info-title">${currentDriver.fullName}</div>
-                    <div><small>ID: ${currentDriver.id}</small></div>
-                    <div><strong>Status:</strong> <span class="badge <span class="math-inline">\{isOnline ? 'bg\-success' \: 'bg\-secondary'\}"\></span>{isOnline ? 'Online' : 'Offline'}</span></div>
-                    <div><strong>Last Update:</strong> ${timeStr}</div>
-                    <div><strong>Location:</strong></div>
-                    <div>Lat: ${lat.toFixed(6)}</div>
-                    <div>Lng: ${lng.toFixed(6)}</div>
-                </div>
-            `;
+        <div class="driver-info-window">
+            <div class="driver-info-title">${currentDriver.fullName}</div>
+            <div><small>ID: ${currentDriver.id}</small></div>
+            <div>
+                <strong>Status:</strong> 
+                <span class="badge ${isOnline ? 'bg-success' : 'bg-secondary'}">
+                    ${isOnline ? 'Online' : 'Offline'}
+                </span>
+            </div>
+            <div><strong>Last Update:</strong> ${timeStr}</div>
+            <div><strong>Location:</strong></div>
+            <div>Lat: ${lat.toFixed(6)}</div>
+            <div>Lng: ${lng.toFixed(6)}</div>
+        </div>
+    `;
         }
 
         // Update assignment info
@@ -879,11 +1027,16 @@
                     strokeColor: 'white'
                 });
             }
+
+
+
             if (isOnline) {
                 startLocationUpdates(currentDriver.id);
+                showAllOrdersOnMap(); // Add this line
             } else {
                 stopLocationUpdates();
             }
+
         }
 
         // Toggle online status
@@ -931,7 +1084,7 @@
             } else {
                 document.getElementById('loginSection').style.display = 'block';
             }
-
+            document.getElementById('showAllOrdersBtn').addEventListener('click', showAllOrdersOnMap);
             document.getElementById('loginBtn').addEventListener('click', handleLogin);
             document.getElementById('toggleOnlineBtn').addEventListener('click', toggleOnlineStatus);
             document.getElementById('centerMapBtn').addEventListener('click', centerMapOnDriver);
