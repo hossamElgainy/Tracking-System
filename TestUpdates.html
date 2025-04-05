@@ -702,14 +702,10 @@
                 orderMarker.setMap(null);
             }
         }
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Helper function to create status buttons HTML
         function createStatusButtonsHTML(orderId, currentStatus) {
             const nextStatuses = getNextStatusOptions(currentStatus);
-            /*if (nextStatuses.length === 0) {
-                return `<div class="text-muted">No further actions available</div>`;
-            }*/
-            console.log(orderId, currentStatus, nextStatuses);
+
             let buttonsHTML = '';
             nextStatuses.forEach(statusCode => {
                 buttonsHTML += `
@@ -719,16 +715,6 @@
             </button>
         `;
             });
-
-            // Add cancel button if not already canceled or delivered
-            /* if (currentStatus !== 8 && currentStatus !== 7 && !nextStatuses.includes(8)) {
-                 buttonsHTML += `
-             <button class="btn btn-sm btn-danger mb-1" 
-                     onclick="updateOrderStatus(${orderId}, 8)">
-                 <i class="bi bi-x-circle"></i> Cancel
-             </button>
-         `;
-             }*/
 
             return `<div class="d-grid gap-1">${buttonsHTML}</div>`;
         }
@@ -905,39 +891,7 @@
             return statusMap[statusCode] || 'bg-secondary';
         }
 
-        /*  async function updateOrderStatus(orderId, newStatus) {
-              try {
-                  // Disable all buttons during update
-                  const buttons = document.querySelectorAll('#statusButtonsContainer button');
-                  buttons.forEach(btn => {
-                      btn.disabled = true;
-                      btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Updating...`;
-                  });
-  
-                  const response = await fetch(`https://laundry.runasp.net/api/Orders?OrderId=${orderId}&Status=${newStatus}`, {
-                      method: 'PUT',
-                      headers: {
-                          'Authorization': `Bearer ${authToken}`
-                      }
-                  });
-  
-                  if (!response.ok) throw new Error('Status update failed');
-  
-                  // Optimistic UI update
-                  const order = currentOrders.find(o => o.id === orderId);
-                  if (order) {
-                      order.orderStatus = newStatus;
-                      updateAssignmentInfo(orderId, order);
-                  }
-  
-                  showNotification(`Status updated to ${getStatusText(newStatus)}`, 'success');
-              } catch (error) {
-                  showNotification(`Failed to update status: ${error.message}`, 'danger');
-                  // Revert UI if needed
-                  loadDriverOrders();
-              }
-          }
-         */
+   
         function getStatusCodeFromString(statusStr) {
             if (!statusStr) return 0; // Unknown
 
@@ -1352,26 +1306,36 @@
             return statusMap[statusCode] || "Unknown";
         }
 
-        // Helper function to determine next possible statuses
         function getNextStatusOptions(currentStatus) {
-            // First convert the status to a standardized code
-            const statusCode = getStatusCodeFromString(currentStatus);
-            console.log('Converted status:', currentStatus, '→', statusCode);
+    // First convert the status to a standardized code
+    const statusCode = getStatusCodeFromString(currentStatus);
 
-            const workflow = {
-                1: [2, 8], // Pending -> Confirmed or Canceled
-                2: [3, 8], // Confirmed -> PickedUp or Canceled
-                3: [4, 8], // PickedUp -> InProgress or Canceled
-                4: [5, 8], // InProgress -> EndedAndWaitTheDelevery or Canceled
-                5: [6, 8], // EndedAndWaitTheDelevery -> InTheWay or Canceled
-                6: [7, 8], // InTheWay -> Delivered or Canceled
-                7: [],      // Delivered - final state
-                8: []       // Canceled - final state
-            };
+    // Driver-only allowed transitions
+    const driverWorkflow = {
+        2: [3],    // Confirmed → PickedUp (only)
+        6: [7]     // InTheWay → Delivered (only)
+    };
 
-            return workflow[statusCode] || [];
-        }
+    // Full workflow (for admin)
+    const fullWorkflow = {
+        1: [2, 8], // Pending → Confirmed or Canceled
+        2: [3, 8], // Confirmed → PickedUp or Canceled
+        3: [4, 8], // PickedUp → InProgress or Canceled
+        4: [5, 8], // InProgress → EndedAndWaitTheDelevery or Canceled
+        5: [6, 8], // EndedAndWaitTheDelevery → InTheWay or Canceled
+        6: [7, 8], // InTheWay → Delivered or Canceled
+        7: [],      // Delivered - final state
+        8: []       // Canceled - final state
+    };
 
+    // Use driverWorkflow for drivers, fullWorkflow for admin
+    // You'll need to determine if current user is admin
+    const isAdmin = false; // Change this based on your auth logic
+    
+    return isAdmin ? 
+        (fullWorkflow[statusCode] || []) : 
+        (driverWorkflow[statusCode] || []);
+}
         function getStatusCodeFromString(statusStr) {
             if (!statusStr) return 0; // Unknown
 
