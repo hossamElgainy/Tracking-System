@@ -262,7 +262,7 @@
         // Initialize SignalR connection
         function setupConnection() {
             connection = new signalR.HubConnectionBuilder()
-                .withUrl(`https://localhost:7098/driverHub`)
+                .withUrl(`http://laundry.runasp.net/driverHub`)
                 .withAutomaticReconnect()
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
@@ -566,7 +566,7 @@
                 document.getElementById("fetchDriversSpinner").style.display = "inline-block";
 
                 // Fetch drivers from API
-                const response = await fetch('https://localhost:7098/api/Drivers/GetDrivers');
+                const response = await fetch('http://laundry.runasp.net/api/Drivers/GetDrivers');
                 const data = await response.json();
 
                 if (response.ok) {
@@ -723,7 +723,7 @@
                 document.getElementById("fetchOrderSpinner").style.display = "inline-block";
 
                 // Fetch order from API
-                const response = await fetch(`https://localhost:7098/api/orders/GetOrderById?OrderId=${orderId}`);
+                const response = await fetch(`http://laundry.runasp.net/api/orders/GetOrderById?OrderId=${orderId}`);
                 const data = await response.json();
                 console.log(data);
                 if (response.ok) {
@@ -862,7 +862,7 @@ async function assignDriverToOrder(orderId, driverId) {
         `;
 
         // Get order details from API
-        const orderResponse = await fetch(`https://localhost:7098/api/orders/GetOrderById?OrderId=${orderId}`);
+        const orderResponse = await fetch(`http://laundry.runasp.net/api/orders/GetOrderById?OrderId=${orderId}`);
         if (!orderResponse.ok) throw new Error("Failed to fetch order details");
         const order = await orderResponse.json();
 
@@ -960,7 +960,7 @@ async function assignDriverToOrder(orderId, driverId) {
                 };
 
                 // Make the API call
-                const response = await fetch('https://localhost:7098/api/OrderDeliveries', {
+                const response = await fetch('http://laundry.runasp.net/api/OrderDeliveries', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

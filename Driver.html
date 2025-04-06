@@ -400,7 +400,7 @@
         // Setup SignalR connection
         async function setupSignalRConnection(driverId) {
             connection = new signalR.HubConnectionBuilder()
-                .withUrl("https://localhost:7098/driverHub", {
+                .withUrl("http://laundry.runasp.net/driverHub", {
                     transport: signalR.HttpTransportType.WebSockets,
                     accessTokenFactory: () => authToken,
                     skipNegotiation: true
@@ -545,7 +545,7 @@ function handleReceiveOrderAssignment(orderId, orderDetails) {
 
         async function loadDriverOrders() {
             try {
-                const response = await fetch('https://localhost:7098/api/Orders/GetDeliveryOrders?Status=Current&PageSize=10&PageIndex=1', {
+                const response = await fetch('http://laundry.runasp.net/api/Orders/GetDeliveryOrders?Status=Current&PageSize=10&PageIndex=1', {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
@@ -1446,7 +1446,7 @@ function handleReceiveOrderAssignment(orderId, orderDetails) {
                 buttons.forEach(btn => btn.disabled = true);
 
                 // Call backend API to update status
-                const response = await fetch(`https://localhost:7098/api/Orders?OrderId=${orderId}&Status=${newStatus}`, {
+                const response = await fetch(`http://laundry.runasp.net/api/Orders?OrderId=${orderId}&Status=${newStatus}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'/*,
@@ -1582,7 +1582,7 @@ function handleReceiveOrderAssignment(orderId, orderDetails) {
         // Fetch driver data from token
         async function fetchDriverDataFromToken(token) {
             try {
-                const response = await fetch('https://localhost:7098/api/Accounts/GetCurrentUser', {
+                const response = await fetch('http://laundry.runasp.net/api/Accounts/GetCurrentUser', {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -1622,7 +1622,7 @@ function handleReceiveOrderAssignment(orderId, orderDetails) {
                 formData.append('Phone', phone);
                 formData.append('Password', password);
 
-                const response = await fetch('https://localhost:7098/api/Accounts/Login', {
+                const response = await fetch('http://laundry.runasp.net/api/Accounts/Login', {
                     method: 'POST',
                     body: formData
                 });
