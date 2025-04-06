@@ -400,7 +400,7 @@
         // Setup SignalR connection
         async function setupSignalRConnection(driverId) {
             connection = new signalR.HubConnectionBuilder()
-                .withUrl("https://laundry.runasp.net/driverHub", {
+                .withUrl("https://localhost:7098/driverHub", {
                     transport: signalR.HttpTransportType.WebSockets,
                     accessTokenFactory: () => authToken,
                     skipNegotiation: true
@@ -417,7 +417,7 @@
                 addActivityLog(`Order #${orderId} assignment expired`, "warning");
             });
 
-            connection.on("OrderConfirmation", (orderId, accepted) => {
+            /*connection.on("OrderConfirmation", (orderId, accepted) => {
                 if (accepted) {
                     updateAssignmentInfo(orderId, {
                         customerName: "Loading...",
@@ -425,7 +425,7 @@
                         totalPrice: "Loading..."
                     });
                 }
-            });
+            });*/
             connection.on("ReceiveLocationUpdate", handleReceiveLocationUpdate);
             connection.on("ReceiveOrderAssignment", handleReceiveOrderAssignment);
             connection.on("RequestLocationUpdate", handleRequestLocationUpdate);
@@ -464,22 +464,34 @@
         }
 
         // Update the handleReceiveOrderAssignment function
-        function handleReceiveOrderAssignment(orderId, orderDetails) {
-            showOrderAssignmentModal(orderId, orderDetails);
-
-            // Add timeout for response
-            setTimeout(() => {
-                const modal = document.getElementById('orderAssignmentModal');
-                if (modal) {
-                    const bsModal = bootstrap.Modal.getInstance(modal);
-                    if (bsModal) {
-                        bsModal.hide();
-                        showNotification("Order assignment expired", "warning");
-                        addActivityLog(`Order #${orderId} assignment expired`, "warning");
-                    }
-                }
-            }, 60000); // 1 minute timeout
-        }
+       // Enhanced assignment handler
+function handleReceiveOrderAssignment(orderId, orderDetails) {
+    // Show assignment modal
+    showOrderAssignmentModal(orderId, orderDetails);
+    
+    // Add the order to current assignments
+    currentOrders.unshift({
+        id: orderId,
+        customer: orderDetails.customerName,
+        address: orderDetails.address,
+        totalPrice: orderDetails.totalPrice,
+        lat: orderDetails.pickupLocation.lat,
+        lng: orderDetails.pickupLocation.lng,
+        orderStatus: "Assigned"
+    });
+    
+    // Update UI
+    updateOrdersList(currentOrders);
+    updateAssignmentInfo(orderId, orderDetails);
+    
+    // Show on map
+    showOrderOnMap({
+        id: orderId,
+        lat: orderDetails.pickupLocation.lat,
+        lng: orderDetails.pickupLocation.lng,
+        address: orderDetails.address
+    });
+}
 
         function handleRequestLocationUpdate() {
             sendLocationUpdate(currentDriver.id);
@@ -533,7 +545,7 @@
 
         async function loadDriverOrders() {
             try {
-                const response = await fetch('https://laundry.runasp.net/api/Orders/GetDeliveryOrders?Status=Current&PageSize=10&PageIndex=1', {
+                const response = await fetch('https://localhost:7098/api/Orders/GetDeliveryOrders?Status=Current&PageSize=10&PageIndex=1', {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
@@ -1434,7 +1446,7 @@
                 buttons.forEach(btn => btn.disabled = true);
 
                 // Call backend API to update status
-                const response = await fetch(`https://laundry.runasp.net/api/Orders?OrderId=${orderId}&Status=${newStatus}`, {
+                const response = await fetch(`https://localhost:7098/api/Orders?OrderId=${orderId}&Status=${newStatus}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'/*,
@@ -1570,7 +1582,7 @@
         // Fetch driver data from token
         async function fetchDriverDataFromToken(token) {
             try {
-                const response = await fetch('https://laundry.runasp.net/api/Accounts/GetCurrentUser', {
+                const response = await fetch('https://localhost:7098/api/Accounts/GetCurrentUser', {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -1610,7 +1622,7 @@
                 formData.append('Phone', phone);
                 formData.append('Password', password);
 
-                const response = await fetch('https://laundry.runasp.net/api/Accounts/Login', {
+                const response = await fetch('https://localhost:7098/api/Accounts/Login', {
                     method: 'POST',
                     body: formData
                 });
@@ -1676,87 +1688,112 @@
             document.getElementById('loginBtnText').style.display = isLoading ? 'none' : 'inline';
             document.getElementById('loginSpinner').style.display = isLoading ? 'inline-block' : 'none';
         }
-        // Add these new functions to handle order acceptance/rejection
-        function showOrderAssignmentModal(orderId, orderDetails) {
-            // Create modal HTML
-            const modalHTML = `
-        <div class="modal fade" id="orderAssignmentModal" tabindex="-1" aria-labelledby="orderAssignmentModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title" id="orderAssignmentModalLabel">New Order Assignment</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        // Enhanced order assignment modal
+function showOrderAssignmentModal(orderId, orderDetails) {
+    // Create modal HTML with more details
+    const modalHTML = `
+    <div class="modal fade" id="orderAssignmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">New Order Assignment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Order #${orderId}</h6>
+                    <p><strong>Customer:</strong> ${orderDetails.customerName}</p>
+                    <p><strong>Address:</strong> ${orderDetails.address}</p>
+                    <p><strong>Total Price:</strong> ${orderDetails.totalPrice}</p>
+                    <div class="mt-3">
+                        <h6>Pickup Location:</h6>
+                        <div id="assignmentMap" style="height: 200px; width: 100%;"></div>
                     </div>
-                    <div class="modal-body">
-                        <h6>Order #${orderId}</h6>
-                        <p><strong>Customer:</strong> ${orderDetails.customerName || 'N/A'}</p>
-                        <p><strong>Address:</strong> ${orderDetails.address || 'N/A'}</p>
-                        <p><strong>Total Price:</strong> ${orderDetails.totalPrice || 'N/A'}</p>
-                        <div id="rejectReasonGroup" class="mt-3" style="display: none;">
-                            <label for="rejectReason" class="form-label">Reason for rejection:</label>
-                            <textarea class="form-control" id="rejectReason" rows="3"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-success" id="acceptOrderBtn">Accept</button>
-                        <button type="button" class="btn btn-danger" id="rejectOrderBtn">Reject</button>
-                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="acceptOrderBtn" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Accept
+                    </button>
+                    <button id="rejectOrderBtn" class="btn btn-danger">
+                        <i class="bi bi-x-circle"></i> Reject
+                    </button>
                 </div>
             </div>
         </div>
-    `;
-
-            // Add modal to DOM
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-            // Initialize Bootstrap modal
-            const modal = new bootstrap.Modal(document.getElementById('orderAssignmentModal'));
-            modal.show();
-
-            // Set up event listeners
-            document.getElementById('acceptOrderBtn').addEventListener('click', () => {
-                connection.invoke("AcceptOrder", orderId)
-                    .then(() => {
-                        showNotification("Order accepted successfully", "success");
-                        addActivityLog(`Accepted order #${orderId}`, "success");
-                        modal.hide();
-                    })
-                    .catch(err => {
-                        console.error("Error accepting order:", err);
-                        showNotification("Failed to accept order", "danger");
-                    });
-            });
-
-            document.getElementById('rejectOrderBtn').addEventListener('click', () => {
-                document.getElementById('rejectReasonGroup').style.display = 'block';
-                document.getElementById('rejectOrderBtn').textContent = 'Confirm Rejection';
-
-                // Change handler to confirm rejection
-                document.getElementById('rejectOrderBtn').onclick = () => {
-                    const reason = document.getElementById('rejectReason').value;
-                    if (!reason) {
-                        showNotification("Please provide a reason for rejection", "warning");
-                        return;
-                    }
-
-                    connection.invoke("RejectOrder", orderId, reason)
-                        .then(() => {
-                            showNotification("Order rejected", "info");
-                            addActivityLog(`Rejected order #${orderId}: ${reason}`, "warning");
-                            modal.hide();
-                        })
-                        .catch(err => {
-                            console.error("Error rejecting order:", err);
-                            showNotification("Failed to reject order", "danger");
-                        });
-                };
-            });
-
-            // Handle modal hidden event
-            document.getElementById('orderAssignmentModal').addEventListener('hidden.bs.modal', () => {
-                document.getElementById('orderAssignmentModal').remove();
-            });
+    </div>`;
+    
+    // Add to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = new bootstrap.Modal(document.getElementById('orderAssignmentModal'));
+    modal.show();
+    
+    // Initialize map in modal
+    const map = new google.maps.Map(document.getElementById("assignmentMap"), {
+        center: { 
+            lat: parseFloat(orderDetails.pickupLocation.lat), 
+            lng: parseFloat(orderDetails.pickupLocation.lng) 
+        },
+        zoom: 15
+    });
+    
+    new google.maps.Marker({
+        position: { 
+            lat: parseFloat(orderDetails.pickupLocation.lat), 
+            lng: parseFloat(orderDetails.pickupLocation.lng) 
+        },
+        map: map,
+        title: "Pickup Location"
+    });
+    
+    // Handle accept/reject
+    document.getElementById('acceptOrderBtn').addEventListener('click', async () => {
+        try {
+            await connection.invoke("AcceptOrder", orderId);
+            showNotification("Order accepted", "success");
+            addActivityLog(`Accepted order #${orderId}`, "success");
+            
+            // Update order status to Confirmed
+            updateOrderStatusInList(orderId, "Confirmed");
+            modal.hide();
+        } catch (error) {
+            showNotification("Failed to accept order", "danger");
+            console.error("Accept error:", error);
         }
+    });
+    
+    document.getElementById('rejectOrderBtn').addEventListener('click', async () => {
+        try {
+            await connection.invoke("RejectOrder", orderId, "Driver rejected");
+            showNotification("Order rejected", "warning");
+            addActivityLog(`Rejected order #${orderId}`, "warning");
+            
+            // Remove from current orders
+            currentOrders = currentOrders.filter(o => o.id !== orderId);
+            updateOrdersList(currentOrders);
+            modal.hide();
+        } catch (error) {
+            showNotification("Failed to reject order", "danger");
+            console.error("Reject error:", error);
+        }
+    });
+    
+    // Auto-close after 1 minute if no response
+    setTimeout(() => {
+        if (document.getElementById('orderAssignmentModal')) {
+            modal.hide();
+            showNotification("Order assignment expired", "warning");
+            addActivityLog(`Order #${orderId} assignment expired`, "warning");
+            
+            // Remove from current orders if still there
+            currentOrders = currentOrders.filter(o => o.id !== orderId);
+            updateOrdersList(currentOrders);
+        }
+    }, 60000);
+    
+    // Cleanup on modal close
+    document.getElementById('orderAssignmentModal').addEventListener('hidden.bs.modal', () => {
+        document.getElementById('orderAssignmentModal').remove();
+    });
+}
         // Add these near your other helper functions
         function calculateETA(distanceMeters) {
             // Average driving speed in km/h (adjust as needed)

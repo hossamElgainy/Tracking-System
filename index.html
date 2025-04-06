@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Assignment System</title>
+    <title>Admin</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -262,7 +262,7 @@
         // Initialize SignalR connection
         function setupConnection() {
             connection = new signalR.HubConnectionBuilder()
-                .withUrl(`https://laundry.runasp.net/driverHub`)
+                .withUrl(`https://localhost:7098/driverHub`)
                 .withAutomaticReconnect()
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
@@ -289,7 +289,6 @@
                 updateDriverMarker(driverId, lat, lng, driverName);
             });
 
-            ///////////////////////////////////////////////////////////////////////////////////
             connection.on("DriverOnline", (driverId, driverName) => {
                 logMessage(`Driver ${driverId} (${driverName}) came online`);
                 if (!onlineDrivers.has(driverId)) {
@@ -305,7 +304,6 @@
                 updateOnlineDriversList();
             });
 
-
             connection.on("DriverOffline", (driverId) => {
                 logMessage(`Driver ${driverId} went offline`);
                 onlineDrivers.delete(driverId);
@@ -318,9 +316,51 @@
                 showNotification(`Broadcast: ${message}`);
             });
 
-            startConnection();
+            // New event handler for order assignment confirmation
+            connection.on("OrderAssigned", (orderId, driverId) => {
+                logMessage(`Order ${orderId} has been assigned to driver ${driverId}`);
+                showNotification(`Order ${orderId} assigned to driver ${driverId}`);
+                
+                // Update the order marker to show it's assigned
+                if (orderMarkers[orderId]) {
+                    orderMarkers[orderId].setIcon({
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: '#198754', // Green for assigned
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: '#FFFFFF'
+                    });
+                }
+                
+                // Reset the driver marker
+                if (driverMarkers[driverId]) {
+                    const colorIndex = parseInt(driverId.replace('R', '')) % colors.length;
+                    const color = colors[colorIndex];
+                    driverMarkers[driverId].setIcon({
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: color,
+                        fillOpacity: 0.9,
+                        strokeWeight: 2,
+                        strokeColor: 'white'
+                    });
+                }
+                
+                // Remove assignment line if exists
+                if (assignmentLines[orderId]) {
+                    assignmentLines[orderId].setMap(null);
+                    delete assignmentLines[orderId];
+                }
+                
+                // Reset current assignment
+                currentAssignment = null;
+                document.getElementById('assignmentDetails').style.display = 'none';
+            });
 
+            startConnection();
         }
+
         async function fetchInitialDriverLocations() {
             try {
                 if (connection.state !== signalR.HubConnectionState.Connected) {
@@ -346,7 +386,6 @@
                 setTimeout(fetchInitialDriverLocations, 3000);
             }
         }
-
 
         function updateOnlineDriversList() {
             const list = document.getElementById("onlineDrivers");
@@ -391,6 +430,7 @@
                 });
             });
         }
+
         function updateDriverMarker(driverId, lat, lng, driverName) {
             const position = { lat: parseFloat(lat), lng: parseFloat(lng) };
 
@@ -441,6 +481,7 @@
             }
             return colors[Math.abs(hash) % colors.length];
         }
+
         // Request location update for a specific driver
         async function requestDriverLocation(driverId) {
             try {
@@ -449,6 +490,7 @@
                 console.error("Error requesting location:", error);
             }
         }
+
         function showDriverInfoWindow(driverId, lat, lng, driverName) {
             // Close any existing info window for this driver
             if (infoWindows[driverId]) {
@@ -498,6 +540,7 @@
         </div>
     `;
         }
+
         async function startConnection() {
             try {
                 await connection.start();
@@ -523,7 +566,7 @@
                 document.getElementById("fetchDriversSpinner").style.display = "inline-block";
 
                 // Fetch drivers from API
-                const response = await fetch('https://laundry.runasp.net/api/Drivers/GetDrivers');
+                const response = await fetch('https://localhost:7098/api/Drivers/GetDrivers');
                 const data = await response.json();
 
                 if (response.ok) {
@@ -563,7 +606,6 @@
 
         // Connect all available drivers
         async function connectAllDrivers() {
-
             try {
                 // Show loading spinner
                 document.getElementById("connectDriversText").textContent = "Connecting...";
@@ -681,7 +723,7 @@
                 document.getElementById("fetchOrderSpinner").style.display = "inline-block";
 
                 // Fetch order from API
-                const response = await fetch(`https://laundry.runasp.net/api/orders/GetOrderById?OrderId=${orderId}`);
+                const response = await fetch(`https://localhost:7098/api/orders/GetOrderById?OrderId=${orderId}`);
                 const data = await response.json();
                 console.log(data);
                 if (response.ok) {
@@ -809,56 +851,67 @@
             });
         }
 
-        async function assignDriverToOrder(orderId, driverId) {
-            if (!currentOrder || currentOrder.id !== orderId) {
-                logMessage("No active order selected for assignment");
-                return;
+       assignDriverToOrder// In admin.html script
+async function assignDriverToOrder(orderId, driverId) {
+    try {
+        // Show loading state
+        document.getElementById("confirmAssignmentBtn").disabled = true;
+        document.getElementById("confirmAssignmentBtn").innerHTML = `
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Assigning...
+        `;
+
+        // Get order details from API
+        const orderResponse = await fetch(`https://localhost:7098/api/orders/GetOrderById?OrderId=${orderId}`);
+        if (!orderResponse.ok) throw new Error("Failed to fetch order details");
+        const order = await orderResponse.json();
+
+        // Prepare assignment data
+        const assignmentData = {
+            orderId: order.id,
+            customerName: order.customer?.fullName || "Customer",
+            address: order.deliveryAddress,
+            totalPrice: order.totalPrice,
+            pickupLocation: {
+                lat: order.lat,
+                lng: order.lang
             }
+        };
 
-            const driverName = driverNameCache.get(driverId) || driverId;
-            const driverPos = driverMarkers[driverId].getPosition();
-            const distance = calculateDistance(
-                currentOrder.lat,
-                currentOrder.lng,
-                driverPos.lat(),
-                driverPos.lng()
-            );
+        // Assign via SignalR
+        await connection.invoke("AssignOrder", driverId, orderId, assignmentData);
+        
+        showNotification(`Order ${orderId} assigned to driver ${driverId}`, "success");
+        logMessage(`Order ${orderId} assigned to driver ${driverId}`);
 
-            // Update driver marker
-            driverMarkers[driverId].setIcon({
+        // Update UI
+        if (orderMarkers[orderId]) {
+            orderMarkers[orderId].setIcon({
                 path: google.maps.SymbolPath.CIRCLE,
-                scale: 12,
-                fillColor: '#FF0000',
+                scale: 8,
+                fillColor: '#198754', // Green for assigned
                 fillOpacity: 1,
                 strokeWeight: 2,
                 strokeColor: '#FFFFFF'
             });
-
-            // Draw assignment line
-            drawAssignmentLine(orderId, driverId, driverPos);
-
-            // Update info window
-            if (infoWindows[driverId]) {
-                infoWindows[driverId].setContent(
-                    createAssignedDriverInfoContent(driverName, driverId, orderId, distance)
-                );
-            }
-
-            // Store assignment
-            currentAssignment = {
-                orderId: orderId,
-                driverId: driverId,
-                driverName: driverName,
-                distance: distance,
-                position: driverPos
-            };
-
-            // Show assignment details
-            showAssignmentDetails(currentAssignment);
-
-            logMessage(`Preparing to assign driver ${driverId} (${driverName}) to order ${orderId}`);
         }
 
+        // Remove assignment line if exists
+        if (assignmentLines[orderId]) {
+            assignmentLines[orderId].setMap(null);
+            delete assignmentLines[orderId];
+        }
+
+    } catch (error) {
+        console.error("Assignment error:", error);
+        showNotification(`Assignment failed: ${error.message}`, "danger");
+        logMessage(`Assignment failed: ${error.message}`);
+    } finally {
+        document.getElementById("confirmAssignmentBtn").disabled = false;
+        document.getElementById("confirmAssignmentBtn").innerHTML = 'Confirm Assignment';
+        document.getElementById('assignmentDetails').style.display = 'none';
+    }
+}
         function drawAssignmentLine(orderId, driverId, driverPos) {
             if (assignmentLines[orderId]) {
                 assignmentLines[orderId].setMap(null);
@@ -890,7 +943,7 @@
             map.panTo(assignment.position);
         }
 
-        // NEW: Function to actually assign the order via API
+        // Function to actually assign the order via API
         async function confirmOrderAssignment(assignment) {
             try {
                 // Show loading state
@@ -907,12 +960,10 @@
                 };
 
                 // Make the API call
-                const response = await fetch('https://laundry.runasp.net/api/OrderDeliveries', {
+                const response = await fetch('https://localhost:7098/api/OrderDeliveries', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        // Add authorization header if needed
-                        // 'Authorization': 'Bearer ' + yourAuthToken
                     },
                     body: JSON.stringify(requestBody)
                 });
@@ -923,6 +974,21 @@
                 }
 
                 const data = await response.json();
+                const order = currentOrder || await fetchOrderDetails(assignment.orderId);
+                // Notify the driver via SignalR
+                try {
+                    await connection.invoke("AssignOrder", assignment.driverId, assignment.orderId, {
+                        orderId: assignment.orderId,
+                        pickupLocation: {
+                            lat: order.lat,
+                            lng: order.lng
+                        },
+                        address: order.address
+                    });
+                } catch (error) {
+                    console.error("Error notifying driver:", error);
+                    logMessage(`Order assigned but could not notify driver: ${error.message}`);
+                }
 
                 // Update UI for successful assignment
                 showNotification(`Success! Order ${assignment.orderId} assigned to ${assignment.driverName}`);
@@ -983,7 +1049,8 @@
                 document.getElementById("confirmAssignmentBtn").innerHTML = 'Confirm Assignment';
             }
         }
-        // NEW: Create content for assigned order info window
+
+        // Create content for assigned order info window
         function createAssignedOrderInfoContent(assignment) {
             return `
                 <div class="order-info-window">
@@ -1142,7 +1209,6 @@
             }
         }
 
-
         // Center map on driver
         window.centerOnDriver = function (driverId) {
             try {
@@ -1167,6 +1233,7 @@
                 logMessage(`Error focusing on driver: ${error.message}`);
             }
         };
+
         // Assign driver to current order
         window.assignToOrder = function (driverId) {
             if (currentOrder) {
@@ -1175,18 +1242,6 @@
                 alert("Please select an order first");
             }
         };
-        // Remove driver marker
-        function removeDriverMarker(driverId) {
-            if (driverMarkers[driverId]) {
-                driverMarkers[driverId].setMap(null);
-                delete driverMarkers[driverId];
-            }
-            if (infoWindows[driverId]) {
-                infoWindows[driverId].close();
-                delete infoWindows[driverId];
-            }
-        }
-
 
         function updateConnectionStatus(status, alertClass) {
             const statusDiv = document.getElementById("connectionStatus");
