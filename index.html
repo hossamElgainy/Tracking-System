@@ -234,7 +234,6 @@
         ];
         const driverNameCache = new Map();
 
-        // Initialize the map
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
                 center: { lat: 29.9514, lng: 30.9247 },
@@ -257,10 +256,7 @@
             });
 
             logMessage("Map initialized - Ready to track drivers");
-
-            // Initialize SignalR connection
             setupConnection();
-
         }
 
         // Initialize SignalR connection
@@ -286,7 +282,6 @@
                 updateConnectionStatus("Connected", "alert-success");
                 logMessage(`Reconnected with ID: ${connectionId}`);
             });
-
 
             // Handle location updates
             connection.on("ReceiveLocationUpdate", (driverId, lat, lng, timestamp, driverName) => {
@@ -351,6 +346,8 @@
                 setTimeout(fetchInitialDriverLocations, 3000);
             }
         }
+
+
         function updateOnlineDriversList() {
             const list = document.getElementById("onlineDrivers");
             const noDriversMsg = document.getElementById("noDriversMessage");
@@ -395,16 +392,20 @@
             });
         }
         function updateDriverMarker(driverId, lat, lng, driverName) {
-
-            ////////////////////////////////
-
-
-            /////////////////////////
             const position = { lat: parseFloat(lat), lng: parseFloat(lng) };
+
+            // Update driver in onlineDrivers map
+            if (onlineDrivers.has(driverId)) {
+                const driver = onlineDrivers.get(driverId);
+                driver.lat = position.lat;
+                driver.lng = position.lng;
+                driver.lastUpdate = new Date();
+            }
+
             if (!driverMarkers[driverId]) {
-        console.log('Creating new marker for:', driverId); // Debug
-        driverMarkers[driverId] = new google.maps.Marker({
-            position,
+                // Create new marker if it doesn't exist
+                driverMarkers[driverId] = new google.maps.Marker({
+                    position,
                     map,
                     title: driverName || `Driver ${driverId}`,
                     icon: {
@@ -415,21 +416,22 @@
                         strokeWeight: 2,
                         strokeColor: 'white'
                     }
-        });
-          // Add click listener
-          driverMarkers[driverId].addListener("click", () => {
+                });
+
+                // Add click listener
+                driverMarkers[driverId].addListener("click", () => {
                     showDriverInfoWindow(driverId, position.lat, position.lng, driverName);
                 });
-    
-           
-
-              
             } else {
-                // Update existing marker
+                // Update existing marker's position
                 driverMarkers[driverId].setPosition(position);
                 driverMarkers[driverId].setTitle(driverName || `Driver ${driverId}`);
             }
+
+            // Log the update for debugging
+            console.log(`Updated driver ${driverId} position to ${lat}, ${lng}`);
         }
+
         // Helper function to get a consistent color for each driver
         function getDriverColor(driverId) {
             // Simple hash function to get consistent color for each driver
@@ -505,7 +507,8 @@
                 // Enable buttons
                 document.getElementById("disconnectDriversBtn").disabled = false;
                 document.getElementById("broadcastBtn").disabled = false;
-
+                // Fetch initial driver locations
+                await fetchInitialDriverLocations();
             } catch (err) {
                 logMessage(`Connection error: ${err}`);
                 setTimeout(startConnection, 5000);
@@ -575,25 +578,25 @@
 
                 // Add new drivers
                 for (const driver of availableDrivers) {
-            if (!driverConnections.has(driver.id)) {
-                driverConnections.set(driver.id, true);
-                driverNameCache.set(driver.id, driver.fullName);
-                
-                // Create initial marker first
-                updateDriverMarker(
-                    driver.id, 
-                    29.9514 + (Math.random() * 0.1 - 0.05), // Initial lat
-                    30.9247 + (Math.random() * 0.1 - 0.05), // Initial lng
-                    driver.fullName
-                );
-                
-                // Then add to online list
-                addOnlineDriver(driver.id);
-                
-                // Then start movement simulation
-                simulateDriverMovement(driver.id);
-            }
-        }
+                    if (!driverConnections.has(driver.id)) {
+                        driverConnections.set(driver.id, true);
+                        driverNameCache.set(driver.id, driver.fullName);
+
+                        // Create initial marker first
+                        updateDriverMarker(
+                            driver.id,
+                            29.9514 + (Math.random() * 0.1 - 0.05), // Initial lat
+                            30.9247 + (Math.random() * 0.1 - 0.05), // Initial lng
+                            driver.fullName
+                        );
+
+                        // Then add to online list
+                        addOnlineDriver(driver.id);
+
+                        // Then start movement simulation
+                        simulateDriverMovement(driver.id);
+                    }
+                }
                 updateConnectedDriversList();
                 logMessage(`Connected ${availableDrivers.length} drivers`);
 
@@ -1141,29 +1144,29 @@
 
 
         // Center map on driver
-        window.centerOnDriver = function(driverId) {
-    try {
-        const matchingKey = Object.keys(driverMarkers).find(key => key.includes(driverId));
-    
-    if (matchingKey) {
-        console.log('Found matching key:', matchingKey);
-        const position = driverMarkers[matchingKey].getPosition();
-        map.panTo(position);
-        map.setZoom(15);
-        showDriverInfoWindow(
-            matchingKey,
-            position.lat(),
-            position.lng(),
-            driverMarkers[matchingKey].getTitle()
-        );
-    } else {
-        logMessage(`Driver ${driverId} marker not found. Available markers: ${Object.keys(driverMarkers).join(', ')}`);
-    }                               
-    } catch (error) {
-        console.error('Error in centerOnDriver:', error);
-        logMessage(`Error focusing on driver: ${error.message}`);
-    }
-};
+        window.centerOnDriver = function (driverId) {
+            try {
+                const matchingKey = Object.keys(driverMarkers).find(key => key.includes(driverId));
+
+                if (matchingKey) {
+                    console.log('Found matching key:', matchingKey);
+                    const position = driverMarkers[matchingKey].getPosition();
+                    map.panTo(position);
+                    map.setZoom(15);
+                    showDriverInfoWindow(
+                        matchingKey,
+                        position.lat(),
+                        position.lng(),
+                        driverMarkers[matchingKey].getTitle()
+                    );
+                } else {
+                    logMessage(`Driver ${driverId} marker not found. Available markers: ${Object.keys(driverMarkers).join(', ')}`);
+                }
+            } catch (error) {
+                console.error('Error in centerOnDriver:', error);
+                logMessage(`Error focusing on driver: ${error.message}`);
+            }
+        };
         // Assign driver to current order
         window.assignToOrder = function (driverId) {
             if (currentOrder) {
