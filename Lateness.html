@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lateness Rule Management</title>
+  <style>
+    :root {
+      --primary: #4361ee;
+      --secondary: #3f37c9;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --success: #4cc9f0;
+      --warning: #f8961e;
+      --danger: #f94144;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f7fa;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background-color: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 15px 0;
+      margin-bottom: 30px;
+    }
+    
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    h1 {
+      color: var(--primary);
+      font-size: 1.8rem;
+    }
+    
+    .main-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+    }
+    
+    @media (max-width: 768px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    /* Navigation */
+    .sidebar {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      height: fit-content;
+    }
+    
+    .nav-menu {
+      list-style: none;
+    }
+    
+    .nav-item {
+      margin-bottom: 10px;
+    }
+    
+    .nav-link {
+      display: block;
+      padding: 10px 15px;
+      color: var(--dark);
+      text-decoration: none;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+    
+    .nav-link.active, .nav-link:hover {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    /* Main Content */
+    .content {
+      background: white;
+      border-radius: 8px;
+      padding: 25px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    /* Form Styles */
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .form-section:last-child {
+      border-bottom: none;
+    }
+    
+    .form-section h3 {
+      margin-bottom: 15px;
+      color: var(--secondary);
+      font-size: 1.3rem;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-row {
+      display: flex;
+      gap: 20px;
+    }
+    
+    @media (max-width: 576px) {
+      .form-row {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+    
+    .form-row .form-group {
+      flex: 1;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    
+    .input-append {
+      margin-left: 10px;
+      color: #666;
+    }
+    
+    .form-checkbox {
+      display: flex;
+      align-items: center;
+    }
+    
+    .form-checkbox input {
+      margin-right: 10px;
+    }
+    
+    .form-subgroup {
+      margin-top: 10px;
+      padding-left: 15px;
+      border-left: 2px solid #eee;
+    }
+    
+    small.hint {
+      display: block;
+      margin-top: 5px;
+      color: #666;
+      font-size: 0.85rem;
+    }
+    
+    /* Buttons */
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 30px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--secondary);
+    }
+    
+    .btn-secondary {
+      background-color: #e9ecef;
+      color: var(--dark);
+    }
+    
+    .btn-secondary:hover {
+      background-color: #dee2e6;
+    }
+    
+    /* Rule Preview Card */
+    .rule-preview {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 30px;
+      border-left: 4px solid var(--primary);
+    }
+    
+    .rule-preview h4 {
+      margin-bottom: 10px;
+      color: var(--secondary);
+    }
+    
+    .rule-preview p {
+      margin-bottom: 5px;
+    }
+    
+    /* Progressive Penalty Table */
+    .penalty-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    
+    .penalty-table th, .penalty-table td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    
+    .penalty-table th {
+      background-color: #f2f2f2;
+    }
+    
+    .penalty-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    
+    /* Alert Messages */
+    .alert {
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      display: none;
+    }
+    
+    .alert-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .alert-error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 992px) {
+      .container {
+        padding: 15px;
+      }
+    }
+    
+    @media (max-width: 576px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      h1 {
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-content">
+      <h1>Lateness Rule Management</h1>
+      <div class="user-profile">Admin User</div>
+    </div>
+  </header>
+  
+  <div class="container">
+    <div class="main-layout">
+      <!-- Navigation Sidebar -->
+      <aside class="sidebar">
+        <ul class="nav-menu">
+          <li class="nav-item"><a href="#" class="nav-link active">Rule Management</a></li>
+          <li class="nav-item"><a href="#" class="nav-link">Employee Records</a></li>
+          <li class="nav-item"><a href="#" class="nav-link">Reports</a></li>
+          <li class="nav-item"><a href="#" class="nav-link">Settings</a></li>
+        </ul>
+      </aside>
+      
+      <!-- Main Content -->
+      <main class="content">
+        <h2>Create New Lateness Rule</h2>
+        
+        <!-- Alert Messages -->
+        <div id="successAlert" class="alert alert-success">
+          Rule saved successfully!
+        </div>
+        
+        <div id="errorAlert" class="alert alert-error">
+          Error saving rule. Please try again.
+        </div>
+        
+        <form id="latenessRuleForm">
+          <!-- Basic Information Section -->
+          <div class="form-section">
+            <h3>Basic Information</h3>
+            
+            <div class="form-group">
+              <label for="ruleName">Rule Name*</label>
+              <input type="text" id="ruleName" placeholder="e.g., Standard Lateness Policy" required value="Progressive Lateness Penalty (Labor Law Compliant)">
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="companyId">Company*</label>
+                <select id="companyId" required>
+                  <option value="">Select Company</option>
+                  <option value="8ea91149-0afb-470f-9c20-08dd7f24f5e5" selected>Ashal</option>
+                  <option value="ea5761ed-2b5d-4ff2-35ee-08dd7f2826bc">Ram</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="departmentId">Department</label>
+                <select id="departmentId">
+                  <option value="" selected>All Departments</option>
+                  <option value="3fa85f64-5717-4562-b3fc-2c963f66afb6">HR</option>
+                  <option value="3fa85f64-5717-4562-b3fc-2c963f66afb7">Finance</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="priority">Priority</label>
+                <input type="number" id="priority" min="1" value="1">
+                <small class="hint">Lower numbers evaluate first</small>
+              </div>
+              
+              <div class="form-group form-checkbox">
+                <input type="checkbox" id="isActive" checked>
+                <label for="isActive">Active Rule</label>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Rule Configuration Section -->
+          <div class="form-section">
+            <h3>Rule Configuration</h3>
+            
+            <div class="form-group">
+              <label for="ruleType">Rule Type*</label>
+              <select id="ruleType" required>
+                <option value="1" selected>Progressive Penalty (Labor Law Compliant)</option>
+                <option value="2">Time-Based (Minutes late)</option>
+                <option value="3">Range-Based (Number of occurrences)</option>
+                <option value="4">Hybrid (Both time and count)</option>
+              </select>
+            </div>
+
+            <!-- Progressive Penalty Table -->
+            <div id="progressiveFields" class="form-group">
+              <label>Progressive Penalty Schedule</label>
+              <table class="penalty-table">
+                <thead>
+                  <tr>
+                    <th>Occurrence</th>
+                    <th>Action</th>
+                    <th>Deduction</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1st</td>
+                    <td>
+                      <select class="action-select" data-stage="1">
+                        <option value="1" selected>Warning</option>
+                        <option value="2">Deduct</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select class="deduction-type-select" data-stage="1" disabled>
+                        <option value="1">Fixed Amount</option>
+                        <option value="2">Percentage Of Day</option>
+                        <option value="3">Hours</option>
+                        <option value="4">Progressive Scale</option>
+                      </select>
+                      <input type="number" class="deduction-value-input" data-stage="1" disabled min="0" step="0.25" value="0">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>2nd</td>
+                    <td>
+                      <select class="action-select" data-stage="2">
+                        <option value="1">Warning</option>
+                        <option value="2" selected>Deduct</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select class="deduction-type-select" data-stage="2">
+                        <option value="1">Fixed Amount</option>
+                        <option value="2">Percentage Of Day</option>
+                        <option value="3">Hours</option>
+                        <option value="4">Progressive Scale</option>
+                      </select>
+                      <input type="number" class="deduction-value-input" data-stage="2" min="0" step="0.25" value="0.25">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>3rd</td>
+                    <td>
+                      <select class="action-select" data-stage="3">
+                        <option value="1">Warning</option>
+                        <option value="2" selected>Deduct</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select class="deduction-type-select" data-stage="3">
+                        <option value="1">Fixed Amount</option>
+                        <option value="2">Percentage Of Day</option>
+                        <option value="3">Hours</option>
+                        <option value="4">Progressive Scale</option>
+                      </select>
+                      <input type="number" class="deduction-value-input" data-stage="3" min="0" step="0.25" value="0.75">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>4th and subsequent</td>
+                    <td>
+                      <select class="action-select" data-stage="4" data-final="true">
+                        <option value="1">Warning</option>
+                        <option value="2" selected>Deduct</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select class="deduction-type-select" data-stage="4">
+                        <option value="1">Fixed Amount</option>
+                        <option value="2">Percentage Of Day</option>
+                        <option value="3">Hours</option>
+                        <option value="4">Progressive Scale</option>
+                      </select>
+                      <input type="number" class="deduction-value-input" data-stage="4" min="0" step="0.25" value="1">
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <small class="hint">This progressive penalty schedule complies with standard labor law requirements.</small>
+            </div>
+
+            <!-- Time-Based Fields (Hidden by default) -->
+            <div id="timeFields" class="form-group" style="display: none;">
+              <label for="timeThresholdInMinutes">Minimum Late Minutes*</label>
+              <input type="number" id="timeThresholdInMinutes" min="1" placeholder="e.g., 15">
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="deductionType">Deduction Type</label>
+                  <select id="deductionType">
+                    <option value="1">Fixed Amount</option>
+                    <option value="2">Percentage Of Day</option>
+                    <option value="3">Hours</option>
+                    <option value="4">Progressive Scale</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="deductionValue">Deduction Value</label>
+                  <input type="number" id="deductionValue" min="0" step="0.25" value="0.25">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Range-Based Fields (Hidden by default) -->
+            <div id="rangeFields" class="form-group" style="display: none;">
+              <label for="countThreshold">Minimum Occurrences*</label>
+              <input type="number" id="countThreshold" min="1" placeholder="e.g., 5">
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="rangeDeductionType">Deduction Type</label>
+                  <select id="rangeDeductionType">
+                    <option value="1">Fixed Amount</option>
+                    <option value="2">Percentage Of Day</option>
+                    <option value="3">Hours</option>
+                    <option value="4">Progressive Scale</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="rangeDeductionValue">Deduction Value</label>
+                  <input type="number" id="rangeDeductionValue" min="0" step="0.25" value="0.5">
+                </div>
+              </div>
+              
+              <div class="form-subgroup">
+                <label for="rangeResetPeriod">Reset Count Period</label>
+                <select id="rangeResetPeriod">
+                  <option value="0">Never reset</option>
+                  <option value="1">Daily</option>
+                  <option value="7">Weekly</option>
+                  <option value="30">Monthly</option>
+                  <option value="90">Quarterly</option>
+                  <option value="365">Yearly</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Reset Period for Progressive Penalty -->
+            <div class="form-group">
+              <label for="rangeResetPeriod">Reset Count Period</label>
+              <select id="rangeResetPeriod">
+                <option value="30" selected>Monthly (Recommended)</option>
+                <option value="90">Quarterly</option>
+                <option value="365">Yearly</option>
+                <option value="0">Never reset</option>
+              </select>
+              <small class="hint">Select how often to reset the occurrence count for progressive penalties</small>
+            </div>
+          </div>
+          
+          <!-- Grace Period Section -->
+          <div class="form-section">
+            <h3>Grace Period Settings</h3>
+            
+            <div class="form-group">
+              <label for="gracePeriodMinutes">Grace Period (Minutes)</label>
+              <input type="number" id="gracePeriodMinutes" min="0" max="15" value="5">
+              <small class="hint">Employees won't be penalized for lateness within this time window (max 15 minutes recommended)</small>
+            </div>
+            
+            <div class="form-group form-checkbox">
+              <input type="checkbox" id="excludeGraceFromCount" checked>
+              <label for="excludeGraceFromCount">Exclude grace period violations from progressive count</label>
+              <small class="hint">When checked, only lateness beyond grace period counts toward progressive penalties</small>
+            </div>
+          </div>
+          
+          <!-- Advanced Controls Section -->
+          <div class="form-section">
+            <h3>Advanced Controls</h3>
+            
+            <div class="form-group form-checkbox">
+              <input type="checkbox" id="stopFurtherProcessing">
+              <label for="stopFurtherProcessing">Stop evaluating other rules if this one applies</label>
+              <small class="hint">When checked, no other rules will be evaluated after this one is triggered</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="description">Rule Description</label>
+              <textarea id="description" rows="3">Labor law compliant progressive lateness penalty: 1st=Warning, 2nd=0.25 day, 3rd=0.75 day, 4th+=1 full day. Monthly reset.</textarea>
+            </div>
+          </div>
+          
+          <!-- Form Actions -->
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Rule</button>
+          </div>
+        </form>
+        
+        <!-- Rule Preview -->
+        <div class="rule-preview">
+          <h4>Rule Preview</h4>
+          <p><strong>Name:</strong> <span id="previewName">Progressive Lateness Penalty (Labor Law Compliant)</span></p>
+          <p><strong>Type:</strong> <span id="previewType">Progressive Penalty (1st=Warning, 2nd=0.25 day, 3rd=0.75 day, 4th+=1 day)</span></p>
+          <p><strong>Grace Period:</strong> <span id="previewGrace">5 minutes</span></p>
+          <p><strong>Reset Period:</strong> <span id="previewReset">Monthly</span></p>
+          <p><strong>Advanced:</strong> <span id="previewAdvanced">Continues evaluating other rules</span></p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Dynamic form behavior
+    document.getElementById('ruleType').addEventListener('change', function() {
+      const ruleType = this.value;
+      const timeFields = document.getElementById('timeFields');
+      const rangeFields = document.getElementById('rangeFields');
+      const progressiveFields = document.getElementById('progressiveFields');
+      
+      // Hide all fields first
+      timeFields.style.display = 'none';
+      rangeFields.style.display = 'none';
+      progressiveFields.style.display = 'none';
+      
+      // Show relevant fields based on selection
+      if (ruleType === '2') { // TimeBased
+        timeFields.style.display = 'block';
+      } else if (ruleType === '3') { // RangeBased
+        rangeFields.style.display = 'block';
+      } else if (ruleType === '4') { // Hybrid
+        timeFields.style.display = 'block';
+        rangeFields.style.display = 'block';
+      } else if (ruleType === '1') { // Progressive
+        progressiveFields.style.display = 'block';
+      }
+      
+      updatePreview();
+    });
+    
+    // Toggle deduction fields based on action selection
+    document.addEventListener('change', function(e) {
+      if (e.target.classList.contains('action-select')) {
+        const stage = e.target.dataset.stage;
+        const isFinal = e.target.dataset.final === 'true';
+        const deductionTypeSelect = document.querySelector(`.deduction-type-select[data-stage="${stage}"]`);
+        const deductionValueInput = document.querySelector(`.deduction-value-input[data-stage="${stage}"]`);
+        
+        if (e.target.value === '2') { // Deduct action
+          deductionTypeSelect.disabled = false;
+          deductionValueInput.disabled = false;
+        } else { // Warning action
+          deductionTypeSelect.disabled = true;
+          deductionValueInput.disabled = true;
+        }
+      }
+    });
+    
+    // Update preview when form changes
+    function updatePreview() {
+      const ruleType = document.getElementById('ruleType').value;
+      const ruleName = document.getElementById('ruleName').value;
+      const gracePeriod = document.getElementById('gracePeriodMinutes').value;
+      const resetPeriod = document.getElementById('rangeResetPeriod').options[document.getElementById('rangeResetPeriod').selectedIndex].text;
+      const stopProcessing = document.getElementById('stopFurtherProcessing').checked;
+      
+      document.getElementById('previewName').textContent = ruleName;
+      
+      if (ruleType === '1') { // Progressive
+        const stages = [];
+        document.querySelectorAll('.penalty-table tbody tr').forEach(row => {
+          const occurrence = row.cells[0].textContent;
+          const action = row.querySelector('.action-select').options[row.querySelector('.action-select').selectedIndex].text;
+          let deduction = '';
+          
+          if (row.querySelector('.action-select').value === '2') { // Deduct
+            const type = row.querySelector('.deduction-type-select').options[row.querySelector('.deduction-type-select').selectedIndex].text;
+            const value = row.querySelector('.deduction-value-input').value;
+            deduction = `Deduct ${value} ${type.toLowerCase()}`;
+          } else {
+            deduction = 'No deduction';
+          }
+          
+          stages.push(`${occurrence}=${action}${deduction !== 'No deduction' ? ` (${deduction})` : ''}`);
+        });
+        
+        document.getElementById('previewType').textContent = `Progressive Penalty (${stages.join(', ')})`;
+      } else if (ruleType === '2') { // TimeBased
+        const threshold = document.getElementById('timeThresholdInMinutes').value || '0';
+        const type = document.getElementById('deductionType').options[document.getElementById('deductionType').selectedIndex].text;
+        const value = document.getElementById('deductionValue').value || '0';
+        document.getElementById('previewType').textContent = `Time-Based: ${threshold} min late = Deduct ${value} ${type.toLowerCase()}`;
+      } else if (ruleType === '3') { // RangeBased
+        const threshold = document.getElementById('countThreshold').value || '0';
+        const type = document.getElementById('rangeDeductionType').options[document.getElementById('rangeDeductionType').selectedIndex].text;
+        const value = document.getElementById('rangeDeductionValue').value || '0';
+        document.getElementById('previewType').textContent = `Range-Based: ${threshold} occurrences = Deduct ${value} ${type.toLowerCase()}`;
+      } else if (ruleType === '4') { // Hybrid
+        const timeThreshold = document.getElementById('timeThresholdInMinutes').value || '0';
+        const countThreshold = document.getElementById('countThreshold').value || '0';
+        document.getElementById('previewType').textContent = `Hybrid: ${timeThreshold} min late AND ${countThreshold} occurrences`;
+      }
+      
+      document.getElementById('previewGrace').textContent = gracePeriod + ' minutes';
+      document.getElementById('previewReset').textContent = resetPeriod;
+      document.getElementById('previewAdvanced').textContent = stopProcessing ? 
+        'Stops evaluating other rules' : 'Continues evaluating other rules';
+    }
+    
+    // Add event listeners to form elements that should update the preview
+    document.getElementById('ruleName').addEventListener('input', updatePreview);
+    document.getElementById('gracePeriodMinutes').addEventListener('input', updatePreview);
+    document.getElementById('rangeResetPeriod').addEventListener('change', updatePreview);
+    document.getElementById('stopFurtherProcessing').addEventListener('change', updatePreview);
+    document.getElementById('timeThresholdInMinutes').addEventListener('input', updatePreview);
+    document.getElementById('countThreshold').addEventListener('input', updatePreview);
+    document.getElementById('deductionType').addEventListener('change', updatePreview);
+    document.getElementById('deductionValue').addEventListener('input', updatePreview);
+    document.getElementById('rangeDeductionType').addEventListener('change', updatePreview);
+    document.getElementById('rangeDeductionValue').addEventListener('input', updatePreview);
+    
+    // Listen for changes in progressive penalty table
+    document.querySelectorAll('.action-select, .deduction-type-select, .deduction-value-input').forEach(el => {
+      el.addEventListener('change', updatePreview);
+      el.addEventListener('input', updatePreview);
+    });
+    
+    // Form submission
+    document.getElementById('latenessRuleForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      // Hide any previous alerts
+      document.getElementById('successAlert').style.display = 'none';
+      document.getElementById('errorAlert').style.display = 'none';
+      function updatePreview() {
+    const resetPeriodOptions = {
+        0: "Never",
+        1: "Daily",
+        7: "Weekly",
+        30: "Monthly",
+        90: "Quarterly",
+        365: "Yearly"
+    };
+    const resetPeriodValue = parseInt(document.getElementById('rangeResetPeriod').value);
+    document.getElementById('previewReset').textContent = resetPeriodOptions[resetPeriodValue];
+}
+      try {
+        // Collect form data
+        const formData = {
+          name: document.getElementById('ruleName').value,
+          ruleType: parseInt(document.getElementById('ruleType').value),
+          priority: parseInt(document.getElementById('priority').value) || 0,
+          isActive: document.getElementById('isActive').checked,
+          timeThresholdInMinutes: parseInt(document.getElementById('timeThresholdInMinutes').value) || 0,
+          countThreshold: parseInt(document.getElementById('countThreshold').value) || 0,
+          gracePeriodMinutes: parseInt(document.getElementById('gracePeriodMinutes').value) || 0,
+          excludeGraceFromCount: document.getElementById('excludeGraceFromCount').checked,
+          stopFurtherProcessing: document.getElementById('stopFurtherProcessing').checked,
+          departmentId: document.getElementById('departmentId').value || null,
+          companyId: document.getElementById('companyId').value,
+          description: document.getElementById('description').value,
+          rangeResetPeriod: parseInt(document.getElementById('rangeResetPeriod').value)
+        };
+        
+        // Add progressive stages if rule type is progressive
+        if (formData.ruleType === 1) {
+          formData.progressiveStages = [];
+          document.querySelectorAll('.penalty-table tbody tr').forEach((row, index) => {
+  const actionValue = row.querySelector('.action-select').value;
+  const deductionTypeSelect = row.querySelector('.deduction-type-select');
+  const deductionValueInput = row.querySelector('.deduction-value-input');
+
+  const stageData = {
+    id: index,
+    occurrenceCount: index + 1,
+    isFinalStage: row.querySelector('.action-select').dataset.final === 'true',
+    action: parseInt(actionValue),
+    deductionType: actionValue === '2' ? parseInt(deductionTypeSelect.value) : 0,
+    deductionValue: actionValue === '2' ? parseFloat(deductionValueInput.value) : 0,
+    deductionDescription: actionValue === '2' ? getDeductionDescription(deductionTypeSelect.value, deductionValueInput.value) : 'No deduction',
+    description: `${row.cells[0].textContent} occurrence penalty`
+  };
+
+  formData.progressiveStages.push(stageData);
+});
+
+
+
+
+
+        
+        } else {
+          // For non-progressive rules, add deduction type and value
+          if (formData.ruleType === 2) { // TimeBased
+            formData.deductionType = parseInt(document.getElementById('deductionType').value);
+            formData.deductionValue = parseFloat(document.getElementById('deductionValue').value);
+          } else if (formData.ruleType === 3) { // RangeBased
+            formData.deductionType = parseInt(document.getElementById('rangeDeductionType').value);
+            formData.deductionValue = parseFloat(document.getElementById('rangeDeductionValue').value);
+          }
+        }
+        
+        // In a real application, you would send this to your API endpoint
+        console.log('Form data to be submitted:', formData);
+        
+        // Simulate API call (replace with actual fetch in production)
+        const response = await fetch('https://localhost:7137/api/LatenessRules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            
+          },
+          body: JSON.stringify(formData)
+        });
+        console.log(response);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        
+        const data = await response.json();
+        console.log('Success:', data);
+        
+        // Show success message
+        document.getElementById('successAlert').style.display = 'block';
+        
+        // Reset form after successful submission (optional)
+        // document.getElementById('latenessRuleForm').reset();
+        
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('errorAlert').style.display = 'block';
+      }
+    });
+    
+function getDeductionDescription(deductionType, deductionValue) {
+  switch (parseInt(deductionType)) {
+    case 1:
+      return `Fixed Amount: ${deductionValue}`;
+    case 2:
+      return `Percentage Of Day: ${deductionValue}%`;
+    case 3:
+      return `Hours: ${deductionValue} hours`;
+    case 4:
+      return `Progressive Scale: ${deductionValue}`;
+    default:
+      return 'Unknown deduction type';
+  }
+}
+    // Initialize the preview
+    updatePreview();
+  </script>
+</body>
+</html>
