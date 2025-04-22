@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Work Hours Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .card {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .form-section {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .work-hour-item {
+            border-left: 4px solid #0d6efd;
+            padding-left: 15px;
+            margin-bottom: 15px;
+        }
+        .action-buttons .btn {
+            margin-right: 5px;
+        }
+        .date-range {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .employee-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+        .badge-employee {
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .select2-container--default .select2-selection--multiple {
+            border: 1px solid #ced4da;
+            min-height: calc(1.5em + 1rem + 2px);
+            padding: 0.5rem 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <h1 class="text-center mb-5"><i class="bi bi-clock"></i> Employee Work Hours Management</h1>
+        
+        <!-- Main Tabs -->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab">Manage Work Hours</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="view-tab" data-bs-toggle="tab" data-bs-target="#view" type="button" role="tab">View Work Hours</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <!-- Manage Work Hours Tab -->
+            <div class="tab-pane fade show active" id="manage" role="tabpanel">
+                <div class="row mt-4">
+                    <div class="col-md-8 mx-auto">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="mb-0">Manage Employee Work Hours</h4>
+                            </div>
+                            <div class="card-body">
+                                <form id="workHoursForm">
+                                    <div class="mb-3">
+                                        <label for="employeeSelect" class="form-label">Select Employees</label>
+                                        <select class="form-control select2-multiple" id="employeeSelect" multiple="multiple">
+                                            <!-- Employees will be loaded dynamically -->
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="workHourType" class="form-label">Work Hour Type</label>
+                                        <select class="form-select" id="workHourType" required>
+                                            <option value="" selected disabled>Select work hour type</option>
+                                            <option value="FullTime">Full Time (9AM - 5PM)</option>
+                                            <option value="PartTime">Part Time (9AM - 1PM)</option>
+                                            <option value="FirstShift">First Shift (6AM - 2PM)</option>
+                                            <option value="SecondShift">Second Shift (2PM - 10PM)</option>
+                                            <option value="ThirdShift">Third Shift (10PM - 6AM)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3 date-range">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label for="fromDate" class="form-label">From Date</label>
+                                                <input type="date" class="form-control" id="fromDate" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="toDate" class="form-label">To Date (optional)</label>
+                                                <input type="date" class="form-control" id="toDate">
+                                                <small class="text-muted">Leave empty for single day</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between mt-4">
+                                        <button type="button" class="btn btn-primary" id="addWorkHoursBtn">
+                                            <i class="bi bi-plus-circle"></i> Add Work Hours
+                                        </button>
+                                        <button type="button" class="btn btn-warning" id="updateWorkHoursBtn">
+                                            <i class="bi bi-pencil-square"></i> Update Work Hours
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Work Hours Tab -->
+            <div class="tab-pane fade" id="view" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8 mx-auto">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h4 class="mb-0">View Employee Work Hours</h4>
+                            </div>
+                            <div class="card-body">
+                                <form id="viewForm" class="mb-4">
+                                    <div class="input-group">
+                                        <select class="form-control select2-single" id="employeeId">
+                                            <option value="" selected disabled>Select employee</option>
+                                            <!-- Employees will be loaded dynamically -->
+                                        </select>
+                                        <button class="btn btn-success" type="button" id="viewBtn">
+                                            <i class="bi bi-search"></i> View
+                                        </button>
+                                    </div>
+                                </form>
+                                
+                                <div id="workHoursList">
+                                    <div class="alert alert-info">
+                                        Select an employee and click View to see their work hours.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                Operation completed successfully.
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        // Initialize toast
+        const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+        
+        // Initialize Select2
+        $(document).ready(function() {
+            $('.select2-multiple').select2({
+                placeholder: "Select employees",
+                allowClear: true
+            });
+            
+            $('.select2-single').select2({
+                placeholder: "Select an employee",
+                allowClear: true
+            });
+        });
+
+        // Function to show toast
+        function showToast(title, message, isSuccess = true) {
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = message;
+            const toastHeader = document.querySelector('.toast-header');
+            if (isSuccess) {
+                toastHeader.classList.remove('bg-danger');
+                toastHeader.classList.add('bg-success', 'text-white');
+            } else {
+                toastHeader.classList.remove('bg-success');
+                toastHeader.classList.add('bg-danger', 'text-white');
+            }
+            toast.show();
+        }
+
+        // Mock function to load employees - replace with actual API call
+        function loadEmployees() {
+            // In a real app, you would fetch this from your API
+            const mockEmployees = [
+                {id: 'EMP001', name: 'John Doe'},
+                {id: 'EMP002', name: 'Jane Smith'},
+                {id: 'EMP003', name: 'Robert Johnson'},
+                {id: 'EMP004', name: 'Emily Davis'},
+                {id: 'EMP005', name: 'Michael Wilson'}
+            ];
+            
+            const employeeSelect = $('#employeeSelect');
+            const viewEmployeeSelect = $('#employeeId');
+            
+            // Clear existing options
+            employeeSelect.empty();
+            viewEmployeeSelect.empty();
+            
+            // Add default option
+            viewEmployeeSelect.append($('<option>', {
+                value: '',
+                text: 'Select employee',
+                selected: true,
+                disabled: true
+            }));
+            
+            // Add employee options
+            mockEmployees.forEach(employee => {
+                const option = $('<option>', {
+                    value: employee.id,
+                    text: `${employee.name} (${employee.id})`
+                });
+                
+                employeeSelect.append(option.clone());
+                viewEmployeeSelect.append(option.clone());
+            });
+            
+            // Trigger change to update Select2
+            employeeSelect.trigger('change');
+            viewEmployeeSelect.trigger('change');
+        }
+        
+        // Load employees when page loads
+        document.addEventListener('DOMContentLoaded', loadEmployees);
+
+        // Add Work Hours
+        document.getElementById('addWorkHoursBtn').addEventListener('click', async function() {
+            const employeeIds = $('#employeeSelect').val();
+            const workHourType = document.getElementById('workHourType').value;
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value || fromDate;
+            
+            if (!employeeIds || employeeIds.length === 0) {
+                showToast('Error', 'Please select at least one employee', false);
+                return;
+            }
+            
+            if (!workHourType) {
+                showToast('Error', 'Please select a work hour type', false);
+                return;
+            }
+            
+            if (!fromDate) {
+                showToast('Error', 'Please select a from date', false);
+                return;
+            }
+
+            try {
+                // Process each employee sequentially
+                for (const userId of employeeIds) {
+                    const response = await fetch('/api/UserWorkHours/AddUserWorkHour', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            UserId: userId,
+                            WorkHourId: workHourType,
+                            From: fromDate,
+                            To: toDate
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to add work hours for employee ${userId}`);
+                    }
+                }
+                
+                showToast('Success', `تمت اضافة مواعيد العمل لـ ${employeeIds.length} موظفين`);
+                document.getElementById('workHoursForm').reset();
+                $('#employeeSelect').val(null).trigger('change');
+            } catch (error) {
+                showToast('Error', 'يوجد رقم ليس موجود', false);
+            }
+        });
+
+        // Update Work Hours
+        document.getElementById('updateWorkHoursBtn').addEventListener('click', async function() {
+            const employeeIds = $('#employeeSelect').val();
+            const workHourType = document.getElementById('workHourType').value;
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value || fromDate;
+            
+            if (!employeeIds || employeeIds.length === 0) {
+                showToast('Error', 'Please select at least one employee', false);
+                return;
+            }
+            
+            if (!workHourType) {
+                showToast('Error', 'Please select a work hour type', false);
+                return;
+            }
+            
+            if (!fromDate) {
+                showToast('Error', 'Please select a from date', false);
+                return;
+            }
+
+            try {
+                // Process each employee sequentially
+                for (const userId of employeeIds) {
+                    const response = await fetch('/api/UserWorkHours/EditUserWorkHour', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            UserId: userId,
+                            WorkHourId: workHourType,
+                            From: fromDate,
+                            To: toDate
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to update work hours for employee ${userId}`);
+                    }
+                }
+                
+                showToast('Success', `تم تحديث مواعيد العمل لـ ${employeeIds.length} موظفين`);
+                $('#employeeSelect').val(null).trigger('change');
+            } catch (error) {
+                showToast('Error', 'يوجد رقم ليس موجود', false);
+            }
+        });
+
+        // View Work Hours
+        document.getElementById('viewBtn').addEventListener('click', async function() {
+            const employeeId = $('#employeeId').val();
+            
+            if (!employeeId) {
+                showToast('Error', 'Please select an employee', false);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/UserWorkHours/GetUserWorkHours?EmployeeId=${employeeId}`);
+                const data = await response.json();
+                
+                if (response.ok && data.data) {
+                    const workHoursList = document.getElementById('workHoursList');
+                    workHoursList.innerHTML = '';
+                    
+                    if (data.data.length === 0) {
+                        workHoursList.innerHTML = '<div class="alert alert-warning">No work hours found for this employee.</div>';
+                        return;
+                    }
+                    
+                    const listGroup = document.createElement('div');
+                    listGroup.className = 'list-group';
+                    
+                    data.data.forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'list-group-item work-hour-item';
+                        
+                        const date = new Date(item.Date).toLocaleDateString();
+                        let workHourType = '';
+                        
+                        // Map work hour ID to human-readable format
+                        switch(item.WorkHourId) {
+                            case 'FullTime':
+                                workHourType = 'Full Time (9AM - 5PM)';
+                                break;
+                            case 'PartTime':
+                                workHourType = 'Part Time (9AM - 1PM)';
+                                break;
+                            case 'FirstShift':
+                                workHourType = 'First Shift (6AM - 2PM)';
+                                break;
+                            case 'SecondShift':
+                                workHourType = 'Second Shift (2PM - 10PM)';
+                                break;
+                            case 'ThirdShift':
+                                workHourType = 'Third Shift (10PM - 6AM)';
+                                break;
+                            default:
+                                workHourType = item.WorkHourId;
+                        }
+                        
+                        itemDiv.innerHTML = `
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5>${date}</h5>
+                                    <p class="mb-1"><strong>Work Schedule:</strong> ${workHourType}</p>
+                                    <p class="mb-1"><strong>English Title:</strong> ${item.EnTitle || 'N/A'}</p>
+                                    <p class="mb-1"><strong>Arabic Title:</strong> ${item.ArTitle || 'N/A'}</p>
+                                </div>
+                            </div>
+                        `;
+                        
+                        listGroup.appendChild(itemDiv);
+                    });
+                    
+                    workHoursList.appendChild(listGroup);
+                } else {
+                    throw new Error('Failed to fetch work hours');
+                }
+            } catch (error) {
+                document.getElementById('workHoursList').innerHTML = `
+                    <div class="alert alert-danger">Error loading work hours. Please try again.</div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
