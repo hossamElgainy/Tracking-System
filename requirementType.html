@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Requirement Type Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .section-header {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0d6efd;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            border-bottom: 3px solid #0d6efd;
+        }
+        .compensation-section, .deduction-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .rule-table th {
+            white-space: nowrap;
+        }
+        .time-input-group {
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2 class="mb-4">Requirement Type Management</h2>
+        
+        <ul class="nav nav-tabs" id="requirementTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button">Basic Information</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="defaults-tab" data-bs-toggle="tab" data-bs-target="#defaults" type="button">System Defaults</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="company-tab" data-bs-toggle="tab" data-bs-target="#company" type="button">Company Settings</button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-4 border border-top-0 rounded-bottom" id="requirementTabsContent">
+            <!-- Basic Information Tab -->
+            <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="code" class="form-label">Code*</label>
+                        <input type="text" class="form-control" id="code" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="status" class="form-label">Status*</label>
+                        <select class="form-select" id="status">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="enTitle" class="form-label">English Title*</label>
+                        <input type="text" class="form-control" id="enTitle" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="arTitle" class="form-label">Arabic Title*</label>
+                        <input type="text" class="form-control" id="arTitle" dir="rtl" required>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" rows="3"></textarea>
+                </div>
+            </div>
+
+            <!-- System Defaults Tab -->
+            <div class="tab-pane fade" id="defaults" role="tabpanel">
+                <div class="section-header">
+                    <h5>Default Constraints</h5>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="defaultMaxTimes" class="form-label">Max Times Per Month</label>
+                        <input type="number" class="form-control" id="defaultMaxTimes" min="0" value="0">
+                        <small class="text-muted">0 = unlimited</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="defaultStartTime" class="form-label">Start Time</label>
+                        <input type="time" class="form-control" id="defaultStartTime">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="defaultEndTime" class="form-label">End Time</label>
+                        <input type="time" class="form-control" id="defaultEndTime">
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="defaultRequiresFile">
+                            <label class="form-check-label" for="defaultRequiresFile">
+                                Requires File Attachment
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="defaultRequiresHR">
+                            <label class="form-check-label" for="defaultRequiresHR">
+                                Requires HR Approval
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Company Settings Tab -->
+            <div class="tab-pane fade" id="company" role="tabpanel">
+                <div class="mb-3">
+                    <label for="companySelect" class="form-label">Select Company</label>
+                    <select class="form-select" id="companySelect">
+                        <option value="">-- Select Company --</option>
+                        <option value="ram">ram</option>
+                        <option value="ashal">ashal</option>
+                    </select>
+                </div>
+                
+                <div id="companySettingsForm" style="display:none;">
+                    <div class="section-header">
+                        <h5>Company-Specific Settings</h5>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small>Leave fields blank to use system defaults</small>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="companyMaxTimes" class="form-label">Max Times Per Month</label>
+                            <input type="number" class="form-control" id="companyMaxTimes" min="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="companyStartTime" class="form-label">Start Time</label>
+                            <input type="time" class="form-control" id="companyStartTime">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="companyEndTime" class="form-label">End Time</label>
+                            <input type="time" class="form-control" id="companyEndTime">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="companyRequiresFile">
+                                <label class="form-check-label" for="companyRequiresFile">
+                                    Requires File Attachment
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="companyRequiresHR">
+                                <label class="form-check-label" for="companyRequiresHR">
+                                    Requires HR Approval
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Enhanced Deduction Section -->
+                    <div class="deduction-section">
+                        <h5>Deduction Rules</h5>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="deductionType" class="form-label">Deduction Type</label>
+                                <select class="form-select" id="deductionType">
+                                    <option value="0">No deduction</option>
+                                    <option value="1">Salary deduction</option>
+                                    <option value="2">Leave deduction</option>
+                                    <option value="3">Both salary and leave</option>
+                                    <option value="4">Custom deduction rules</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="deductionScope" class="form-label">Deduction Scope</label>
+                                <select class="form-select" id="deductionScope">
+                                    <option value="fixed">Fixed amount per occurrence</option>
+                                    <option value="time">Based on time duration</option>
+                                    <option value="percentage">Percentage of salary</option>
+                                    <option value="custom">Custom rules</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="deductionDetails">
+                            <!-- Fixed Amount Deduction -->
+                            <div class="row mb-3" id="fixedAmountDeduction">
+                                <div class="col-md-6">
+                                    <label for="deductionAmount" class="form-label">Deduction Amount</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="deductionAmount" min="0" step="0.01">
+                                        <span class="input-group-text">SAR</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Time-Based Deduction -->
+                            <div class="row mb-3" id="timeBasedDeduction" style="display:none;">
+                                <div class="col-md-12">
+                                    <label class="form-label">Time-Based Deduction Rules</label>
+                                    <div class="card p-3">
+                                        <div class="table-responsive">
+                                            <table class="table rule-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Time Range</th>
+                                                        <th>Deduction Type</th>
+                                                        <th>Amount</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>
+                                                            <div class="input-group time-input-group">
+                                                                <input type="number" class="form-control" min="0" value="0" placeholder="Min">
+                                                                <span class="input-group-text">to</span>
+                                                                <input type="number" class="form-control" min="1" value="60" placeholder="Max">
+                                                                <span class="input-group-text">mins</span>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-select">
+                                                                <option value="fixed">Fixed amount</option>
+                                                                <option value="perMinute">Per minute</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <div class="input-group">
+                                                                <input type="number" class="form-control" min="0" step="0.01" value="10.00">
+                                                                <span class="input-group-text">SAR</span>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-sm btn-danger">Remove</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>
+                                                            <div class="input-group time-input-group">
+                                                                <input type="number" class="form-control" min="0" value="61" placeholder="Min">
+                                                                <span class="input-group-text">to</span>
+                                                                <input type="number" class="form-control" min="1" value="120" placeholder="Max">
+                                                                <span class="input-group-text">mins</span>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-select">
+                                                                <option value="fixed">Fixed amount</option>
+                                                                <option value="perMinute" selected>Per minute</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <div class="input-group">
+                                                                <input type="number" class="form-control" min="0" step="0.01" value="0.50">
+                                                                <span class="input-group-text">SAR/min</span>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-sm btn-danger">Remove</button>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <button class="btn btn-sm btn-primary mt-2">Add Rule</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Percentage Deduction -->
+                            <div class="row mb-3" id="percentageDeduction" style="display:none;">
+                                <div class="col-md-6">
+                                    <label for="deductionPercentage" class="form-label">Deduction Percentage</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="deductionPercentage" min="0" max="100" step="0.1" value="1.0">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <small class="text-muted">Percentage of daily salary</small>
+                                </div>
+                            </div>
+                            
+                            <!-- Custom Rules -->
+                            <div class="row mb-3" id="customDeductionRules" style="display:none;">
+                                <div class="col-md-12">
+                                    <label class="form-label">Custom Deduction Rules</label>
+                                    <div class="card p-3">
+                                        <div class="mb-3">
+                                            <label for="customDeductionFormula" class="form-label">Formula</label>
+                                            <input type="text" class="form-control" id="customDeductionFormula" placeholder="e.g., (hours * 0.5) + 10">
+                                            <small class="text-muted">Use variables: hours, minutes, days, salary</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="customDeductionNotes" class="form-label">Notes</label>
+                                            <textarea class="form-control" id="customDeductionNotes" rows="2"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Leave Deduction Options -->
+                            <div class="row mb-3" id="leaveDeductionOptions" style="display:none;">
+                                <div class="col-md-6">
+                                    <label class="form-label">Leave Deduction Options</label>
+                                    <div class="card p-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="leaveDeduction" id="fullDayDeduction" value="fullDay" checked>
+                                            <label class="form-check-label" for="fullDayDeduction">
+                                                Full day deduction
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="leaveDeduction" id="halfDayDeduction" value="halfDay">
+                                            <label class="form-check-label" for="halfDayDeduction">
+                                                Half day deduction
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="leaveDeduction" id="hourlyDeduction" value="hourly">
+                                            <label class="form-check-label" for="hourlyDeduction">
+                                                Hourly deduction (1 day = 
+                                                <input type="number" class="form-control d-inline-block" style="width: 60px;" min="1" value="8"> hours)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Repetition and Escalation Rules -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="repetitionHandling" class="form-label">Repetition Handling</label>
+                                <select class="form-select" id="repetitionHandling">
+                                    <option value="none">No special handling</option>
+                                    <option value="accumulate">Accumulate deductions</option>
+                                    <option value="escalate">Escalate deductions</option>
+                                    <option value="cap">Cap at maximum</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="escalationOptions" style="display:none;">
+                                <label for="escalationRate" class="form-label">Escalation Rate</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="escalationRate" min="0" step="0.1" value="1.5">
+                                    <span class="input-group-text">x per occurrence</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Time-Based Compensation Section -->
+                    <div class="compensation-section">
+                        <h5>Compensation Rules</h5>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="hasCompensation">
+                                    <label class="form-check-label" for="hasCompensation">
+                                        Has Time Compensation?
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="compensationDetails" style="display:none;">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="compensationMethod" class="form-label">Compensation Method</label>
+                                    <select class="form-select" id="compensationMethod">
+                                        <option value="fixed">Fixed time addition</option>
+                                        <option value="multiplier">Multiplier of time</option>
+                                        <option value="custom">Custom calculation</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Fixed Time Compensation -->
+                            <div class="row mb-3" id="fixedTimeCompensation">
+                                <div class="col-md-6">
+                                    <label for="compensationTime" class="form-label">Compensation Time</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="compensationTime" min="0" step="1" value="60">
+                                        <select class="form-select" style="max-width: 100px;">
+                                            <option value="minutes">Minutes</option>
+                                            <option value="hours">Hours</option>
+                                            <option value="days">Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Multiplier Compensation -->
+                            <div class="row mb-3" id="multiplierCompensation" style="display:none;">
+                                <div class="col-md-6">
+                                    <label for="timeMultiplier" class="form-label">Time Multiplier</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="timeMultiplier" min="0" step="0.1" value="1.5">
+                                        <span class="input-group-text">x time spent</span>
+                                    </div>
+                                    <small class="text-muted">e.g., 1.5x means 1 hour becomes 1.5 hours</small>
+                                </div>
+                            </div>
+                            
+                            <!-- Custom Compensation -->
+                            <div class="row mb-3" id="customCompensation" style="display:none;">
+                                <div class="col-md-12">
+                                    <label for="customCompensationFormula" class="form-label">Custom Formula</label>
+                                    <input type="text" class="form-control" id="customCompensationFormula" placeholder="e.g., (hours * 1.5) + 30">
+                                    <small class="text-muted">Use variables: hours, minutes, days</small>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="compensationType" class="form-label">Compensation Type</label>
+                                    <select class="form-select" id="compensationType">
+                                        <option value="timeBank">Add to time bank</option>
+                                        <option value="overtime">Count as overtime</option>
+                                        <option value="flexi">Add to flexi-time</option>
+                                        <option value="leave">Convert to leave days</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="compensationExpiry" class="form-label">Compensation Expiry</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="compensationExpiry" min="0" value="30">
+                                        <select class="form-select" style="max-width: 120px;">
+                                            <option value="days">Days</option>
+                                            <option value="weeks">Weeks</option>
+                                            <option value="months" selected>Months</option>
+                                            <option value="years">Years</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Effective Dates -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="effectiveFrom" class="form-label">Effective From</label>
+                            <input type="date" class="form-control" id="effectiveFrom">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="effectiveTo" class="form-label">Effective To</label>
+                            <input type="date" class="form-control" id="effectiveTo">
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary">Save Company Settings</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-end mt-3">
+            <button type="button" class="btn btn-secondary me-2">Cancel</button>
+            <button type="button" class="btn btn-primary">Save Requirement Type</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Simple JavaScript to handle dynamic fields
+        document.getElementById('companySelect').addEventListener('change', function() {
+            const form = document.getElementById('companySettingsForm');
+            form.style.display = this.value ? 'block' : 'none';
+        });
+        
+        // Handle deduction type changes
+        document.getElementById('deductionType').addEventListener('change', function() {
+            const type = this.value;
+            document.getElementById('leaveDeductionOptions').style.display = 
+                (type === '2' || type === '3') ? 'block' : 'none';
+        });
+        
+        // Handle deduction scope changes
+        document.getElementById('deductionScope').addEventListener('change', function() {
+            const scope = this.value;
+            
+            // Hide all deduction detail sections
+            document.getElementById('fixedAmountDeduction').style.display = 'none';
+            document.getElementById('timeBasedDeduction').style.display = 'none';
+            document.getElementById('percentageDeduction').style.display = 'none';
+            document.getElementById('customDeductionRules').style.display = 'none';
+            
+            // Show the selected one
+            if (scope === 'fixed') {
+                document.getElementById('fixedAmountDeduction').style.display = 'block';
+            } else if (scope === 'time') {
+                document.getElementById('timeBasedDeduction').style.display = 'block';
+            } else if (scope === 'percentage') {
+                document.getElementById('percentageDeduction').style.display = 'block';
+            } else if (scope === 'custom') {
+                document.getElementById('customDeductionRules').style.display = 'block';
+            }
+        });
+        
+        // Handle repetition handling changes
+        document.getElementById('repetitionHandling').addEventListener('change', function() {
+            document.getElementById('escalationOptions').style.display = 
+                (this.value === 'escalate') ? 'block' : 'none';
+        });
+        
+        // Handle compensation checkbox
+        document.getElementById('hasCompensation').addEventListener('change', function() {
+            document.getElementById('compensationDetails').style.display = 
+                this.checked ? 'block' : 'none';
+        });
+        
+        // Handle compensation method changes
+        document.getElementById('compensationMethod').addEventListener('change', function() {
+            const method = this.value;
+            
+            // Hide all compensation detail sections
+            document.getElementById('fixedTimeCompensation').style.display = 'none';
+            document.getElementById('multiplierCompensation').style.display = 'none';
+            document.getElementById('customCompensation').style.display = 'none';
+            
+            // Show the selected one
+            if (method === 'fixed') {
+                document.getElementById('fixedTimeCompensation').style.display = 'block';
+            } else if (method === 'multiplier') {
+                document.getElementById('multiplierCompensation').style.display = 'block';
+            } else if (method === 'custom') {
+                document.getElementById('customCompensation').style.display = 'block';
+            }
+        });
+        
+        // Initialize any existing values
+        document.addEventListener('DOMContentLoaded', function() {
+            // Trigger change events to set initial visibility
+            document.getElementById('deductionType').dispatchEvent(new Event('change'));
+            document.getElementById('deductionScope').dispatchEvent(new Event('change'));
+            document.getElementById('repetitionHandling').dispatchEvent(new Event('change'));
+            document.getElementById('hasCompensation').dispatchEvent(new Event('change'));
+            document.getElementById('compensationMethod').dispatchEvent(new Event('change'));
+        });
+    </script>
+</body>
+</html>
