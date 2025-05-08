@@ -347,14 +347,14 @@
 
             // Delete old logs
             $('#deleteOldLogs').click(function() {
-                const daysToKeep = 30;
+                const daysToKeep = 0;
                 
                 if (confirm(`Delete all logs older than ${daysToKeep} days? This cannot be undone.`)) {
                     $('#loadingIndicator').show();
                     
                     $.ajax({
                         url: `${apiBaseUrl}/CleanOldLogs?daysToKeep=${daysToKeep}`,
-                        method: 'POST',
+                        method: 'Delete',
                         success: function(response) {
                             table.ajax.reload();
                             showToast(`Successfully deleted ${response} old logs`);
