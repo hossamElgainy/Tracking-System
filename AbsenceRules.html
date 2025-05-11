@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absence Rule Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .stage-item {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0d6efd;
+        }
+        .remove-stage {
+            cursor: pointer;
+            color: #dc3545;
+        }
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4 mb-5">
+        <h2 class="mb-4">Absence Rule Configuration</h2>
+        
+        <form id="absenceRuleForm">
+            <input type="hidden" id="companyId" name="companyId" value="">
+            
+            <div class="form-section">
+                <h4>Basic Information</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="enTitle" class="form-label">English Title</label>
+                            <input type="text" class="form-control" id="enTitle" name="enTitle" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="arTitle" class="form-label">Arabic Title</label>
+                            <input type="text" class="form-control" id="arTitle" name="arTitle" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="ruleType" class="form-label">Rule Type</label>
+                            <select class="form-select" id="ruleType" name="ruleType" required>
+                                <option value="">Select Rule Type</option>
+                                <option value="1">Count Based</option>
+                                <option value="3">Progressive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="priority" class="form-label">Priority</label>
+                            <input type="number" class="form-control" id="priority" name="priority" min="1" value="1" required>
+                            <small class="text-muted">Lower numbers evaluate first</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="isActive" name="isActive" checked>
+                    <label class="form-check-label" for="isActive">Active Rule</label>
+                </div>
+            </div>
+            
+            <div class="form-section" id="countThresholdSection">
+                <h4>Count Threshold</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="countThreshold" class="form-label">Number of Absences to Trigger</label>
+                            <input type="number" class="form-control" id="countThreshold" name="countThreshold" min="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>Absence Type</h4>
+                <div class="mb-3">
+                    <label class="form-label">Applies To</label>
+                    <select class="form-select" id="absenceType" name="absenceType">
+                        <option value="0">Any Missing Attendance</option>
+                        <option value="1">Missing Check-In Only</option>
+                        <option value="2">Missing Check-Out Only</option>
+                        <option value="3">Missing Both Check-In and Check-Out</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>Reset Period</h4>
+                <div class="mb-3">
+                    <label for="rangeResetPeriod" class="form-label">Reset Absence Count</label>
+                    <select class="form-select" id="rangeResetPeriod" name="rangeResetPeriod">
+                        <option value="0">Never</option>
+                        <option value="1">Daily</option>
+                        <option value="7">Weekly</option>
+                        <option value="30">Monthly</option>
+                        <option value="90">Quarterly</option>
+                        <option value="365">Yearly</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>Progressive Penalty Stages</h4>
+                <div id="progressiveStagesContainer">
+                    <!-- Stages will be added here dynamically -->
+                </div>
+                <button type="button" class="btn btn-outline-primary" id="addStageBtn">
+                    <i class="bi bi-plus-circle"></i> Add Penalty Stage
+                </button>
+            </div>
+            
+            <div class="form-section">
+                <h4>Additional Settings</h4>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="affectOtherBenefits" name="affectOtherBenefits">
+                    <label class="form-check-label" for="affectOtherBenefits">Affects Other Benefits</label>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end mt-4">
+                <button type="button" class="btn btn-secondary me-2">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Rule</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Progressive Stage Template (Hidden) -->
+    <div id="stageTemplate" class="d-none">
+        <div class="stage-item">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Stage <span class="stage-number">1</span></h5>
+                <span class="remove-stage"><i class="bi bi-trash"></i> Remove</span>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">Applies to Occurrence</label>
+                        <input type="number" class="form-control stage-occurrence" min="1" value="1">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">Action</label>
+                        <select class="form-select stage-action">
+                            <option value="1">Deduct</option>
+                            <option value="2">Warning</option>
+                            <option value="3">Suspend</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input stage-final">
+                        <label class="form-check-label">Final Stage (and subsequent)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row deduction-fields">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Deduction Type</label>
+                        <select class="form-select stage-deduction-type">
+                            <option value="1">Fixed Amount</option>
+                            <option value="2">Percentage</option>
+                            <option value="3">Hours</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Deduction Value</label>
+                        <input type="number" class="form-control stage-deduction-value" step="0.01">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ruleTypeSelect = document.getElementById('ruleType');
+            const countThresholdSection = document.getElementById('countThresholdSection');
+            const progressiveStagesContainer = document.getElementById('progressiveStagesContainer');
+            const addStageBtn = document.getElementById('addStageBtn');
+            const stageTemplate = document.getElementById('stageTemplate');
+            
+            let stageCounter = 1;
+            
+            // Toggle sections based on rule type
+            ruleTypeSelect.addEventListener('change', function() {
+                if (this.value === '3') { // Progressive
+                    countThresholdSection.style.display = 'none';
+                    document.querySelector('.form-section:nth-last-child(3)').style.display = 'block';
+                } else if (this.value === '1') { // Count based
+                    countThresholdSection.style.display = 'block';
+                    document.querySelector('.form-section:nth-last-child(3)').style.display = 'none';
+                }
+            });
+            
+            // Add new stage
+            addStageBtn.addEventListener('click', function() {
+                const newStage = stageTemplate.cloneNode(true);
+                newStage.classList.remove('d-none');
+                newStage.id = '';
+                
+                const stageNumber = newStage.querySelector('.stage-number');
+                stageNumber.textContent = stageCounter;
+                
+                newStage.querySelector('.stage-occurrence').name = `ProgressiveStages[${stageCounter-1}].OccurrenceCount`;
+                newStage.querySelector('.stage-action').name = `ProgressiveStages[${stageCounter-1}].Action`;
+                newStage.querySelector('.stage-final').name = `ProgressiveStages[${stageCounter-1}].IsFinalStage`;
+                newStage.querySelector('.stage-deduction-type').name = `ProgressiveStages[${stageCounter-1}].DeductionType`;
+                newStage.querySelector('.stage-deduction-value').name = `ProgressiveStages[${stageCounter-1}].DeductionValue`;
+                
+                // Toggle deduction fields based on action
+                const actionSelect = newStage.querySelector('.stage-action');
+                const deductionFields = newStage.querySelector('.deduction-fields');
+                
+                actionSelect.addEventListener('change', function() {
+                    deductionFields.style.display = this.value === '1' ? 'block' : 'none';
+                });
+                
+                // Set initial state
+                deductionFields.style.display = actionSelect.value === '1' ? 'block' : 'none';
+                
+                // Remove stage handler
+                newStage.querySelector('.remove-stage').addEventListener('click', function() {
+                    newStage.remove();
+                    renumberStages();
+                });
+                
+                progressiveStagesContainer.appendChild(newStage);
+                stageCounter++;
+            });
+            
+            // Renumber stages after deletion
+            function renumberStages() {
+                const stages = progressiveStagesContainer.querySelectorAll('.stage-item');
+                stages.forEach((stage, index) => {
+                    stage.querySelector('.stage-number').textContent = index + 1;
+                });
+                stageCounter = stages.length + 1;
+            }
+            
+            // Form submission
+            document.getElementById('absenceRuleForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // Form validation and submission logic would go here
+                console.log('Form submitted');
+                // You would typically use fetch() to send data to your API
+            });
+        });
+    </script>
+</body>
+</html>
